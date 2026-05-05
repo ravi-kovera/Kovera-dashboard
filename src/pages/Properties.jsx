@@ -9,7 +9,7 @@ import {
   ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, List, Eye,
   DollarSign, ArrowLeftRight, User, Calendar, ImageIcon,
 } from "lucide-react";
-import { useProperties, useProperty, useUpdatePropertyStatus, LOCATIONS } from "@/services/hooks/useProperties";
+import { useProperties, useProperty, useUpdatePropertyStatus } from "@/services/hooks/useProperties";
 
 /* ── Status badge map ── */
 const STATUS_VARIANT = { Active: "success", Pending: "warning", Sold: "info" };
@@ -406,7 +406,6 @@ export default function PropertiesPage() {
             onChange={(e) => { setLocationFilter(e.target.value); setPage(1); }}
             options={[
               { value: "all", label: "All Locations" },
-              ...LOCATIONS.map((loc) => ({ value: loc, label: loc })),
             ]}
             size="sm"
           />

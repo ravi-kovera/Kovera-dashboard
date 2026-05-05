@@ -1,9 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { analyticsAPI } from "@/services/api/analytics";
 
-/**
- * Default date range: 30 days ago → now
- */
 function defaultDateRange() {
   const to = new Date().toISOString();
   const from = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -20,6 +17,7 @@ export function useDashboardSummary(params) {
     queryFn: () => analyticsAPI.getDashboard(params).then((r) => r.data),
     staleTime: 60_000,
     refetchInterval: 60_000,
+    refetchIntervalInBackground: false, // stop polling when tab is backgrounded
   });
 }
 
@@ -214,3 +212,82 @@ export function useListingsOverview() {
     staleTime: 60_000,
   });
 }
+
+// ═══════════════════════════════════════════════
+//  Chain Management
+// ═══════════════════════════════════════════════
+
+export function useNetworkChains(params) {
+  return useQuery({
+    queryKey: ["analytics", "network-chains", params],
+    queryFn: () => analyticsAPI.getNetworkChains(params).then((r) => r.data),
+    staleTime: 30_000,
+  });
+}
+
+export function useAgentRequests() {
+  return useQuery({
+    queryKey: ["analytics", "agent-requests"],
+    queryFn: () => analyticsAPI.getAgentRequests().then((r) => r.data),
+    staleTime: 15_000,
+  });
+}
+
+export function useApproveAgentRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => analyticsAPI.approveAgentRequest(id).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["analytics", "agent-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics", "network-chains"] });
+      window.dispatchEvent(new CustomEvent("kovera:toast", {
+        detail: { type: "success", title: "Approved", message: "Agent approved and invitation sent." },
+      }));
+    },
+    onError: () => {
+      window.dispatchEvent(new CustomEvent("kovera:toast", {
+        detail: { type: "error", title: "Error", message: "Failed to approve agent request." },
+      }));
+    },
+  });
+}
+
+export function useRejectAgentRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => analyticsAPI.rejectAgentRequest(id).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["analytics", "agent-requests"] });
+      window.dispatchEvent(new CustomEvent("kovera:toast", {
+        detail: { type: "success", title: "Rejected", message: "Agent request has been rejected." },
+      }));
+    },
+    onError: () => {
+      window.dispatchEvent(new CustomEvent("kovera:toast", {
+        detail: { type: "error", title: "Error", message: "Failed to reject agent request." },
+      }));
+    },
+  });
+}
+
+export function useAssignAgent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, agentEmail }) =>
+      analyticsAPI.assignAgent({ userId, agentEmail }).then((r) => r.data),
+    onSuccess: (_, { agentEmail }) => {
+      queryClient.invalidateQueries({ queryKey: ["analytics", "network-chains"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics", "agent-requests"] });
+      window.dispatchEvent(new CustomEvent("kovera:toast", {
+        detail: { type: "success", title: "Agent Assigned", message: `Invitation sent to ${agentEmail}.` },
+      }));
+    },
+    onError: () => {
+      window.dispatchEvent(new CustomEvent("kovera:toast", {
+        detail: { type: "error", title: "Error", message: "Failed to assign agent." },
+      }));
+    },
+  });
+}
+
+export { defaultDateRange };

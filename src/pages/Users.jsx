@@ -1,323 +1,197 @@
-import { useState, useCallback } from "react";
+import { useState, useMemo } from "react";
 import {
-  Button,
-  Badge,
   Card,
+  CardHeader,
+  CardTitle,
   CardContent,
-  Toggle,
-  Select,
+  Badge,
+  Button,
+  Skeleton,
 } from "@/components/ui";
 import {
-  UserPlus,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  Filter,
-  X,
-  User,
-  Mail,
-  Phone,
-  Calendar,
+  Users,
+  UserCheck,
+  UserX,
   Activity,
-  Eye,
-  MousePointerClick,
-  LogIn,
-  AlertTriangle,
-  CheckCircle2,
-  ShieldAlert,
+  TrendingUp,
+  RefreshCw,
+  CalendarDays,
+  Bell,
 } from "lucide-react";
-import { useUsers, useUser, useToggleUserStatus } from "@/services/hooks/useUsers";
+import {
+  useUserActivity,
+  useUserSignups,
+  useOnboardingFunnel,
+  useRolesDistribution,
+  defaultDateRange,
+} from "@/services/hooks/useAnalytics";
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from "recharts";
 
-/* ── Status badge variant map ── */
-const STATUS_VARIANT = {
-  Active: "success",
-  Blocked: "danger",
-  Inactive: "warning",
+/* ── Helpers ── */
+function fmtNum(num) {
+  if (num == null) return "—";
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
+  if (num >= 10_000) return `${(num / 1_000).toFixed(1)}K`;
+  return num.toLocaleString();
+}
+
+function monthLabel(iso) {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+}
+
+/* ── Custom Tooltip ── */
+function ChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-xl border border-border bg-navy-900 px-3 py-2 shadow-elevated text-xs">
+      <p className="text-white font-medium mb-1">{label}</p>
+      {payload.map((entry, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full" style={{ background: entry.color }} />
+          <span className="text-muted">{entry.name}:</span>
+          <span className="text-white font-medium">{entry.value?.toLocaleString()}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── Skeleton components ── */
+function KPISkeleton() {
+  return (
+    <div className="rounded-2xl bg-surface border border-border p-5 space-y-4">
+      <div className="flex items-start justify-between">
+        <div className="w-10 h-10 rounded-xl skeleton" />
+        <div className="w-16 h-5 rounded-full skeleton" />
+      </div>
+      <div className="w-24 h-8 rounded-lg skeleton" />
+      <div className="w-32 h-4 rounded skeleton" />
+    </div>
+  );
+}
+
+function ChartSkeleton() {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-end gap-2 h-[200px] px-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="flex-1">
+            <Skeleton className="w-full rounded-t" style={{ height: `${30 + ((i * 17) % 60)}%` }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Stat Card ── */
+const ACCENT = {
+  blue:   { bg: "bg-blue-500/10",   icon: "text-blue-400",   badge: "text-blue-400 bg-blue-500/10" },
+  green:  { bg: "bg-green-500/10",  icon: "text-green-400",  badge: "text-green-400 bg-green-500/10" },
+  slate:  { bg: "bg-slate-500/10",  icon: "text-slate-400",  badge: "text-slate-400 bg-slate-500/10" },
+  purple: { bg: "bg-purple-500/10", icon: "text-purple-400", badge: "text-purple-400 bg-purple-500/10" },
 };
 
-/* ── Format date ── */
-function formatDate(iso) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-/* ── Sort icon ── */
-function SortIcon({ field, current, order }) {
-  if (current !== field) return <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground" />;
-  return order === "asc" ? (
-    <ArrowUp className="w-3.5 h-3.5 text-primary" />
-  ) : (
-    <ArrowDown className="w-3.5 h-3.5 text-primary" />
-  );
-}
-
-/* ── Table skeleton ── */
-function TableSkeleton({ rows = 5 }) {
+function StatCard({ icon: Icon, title, value, sub, accent = "blue", loading }) {
+  const a = ACCENT[accent] || ACCENT.blue;
+  if (loading) return <KPISkeleton />;
   return (
-    <>
-      {Array.from({ length: rows }).map((_, i) => (
-        <tr key={i} className="border-b border-border/50">
-          <td className="px-5 py-3.5"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-xl skeleton" /><div className="space-y-1.5"><div className="h-4 w-28 skeleton rounded" /><div className="h-3 w-36 skeleton rounded" /></div></div></td>
-          <td className="px-5 py-3.5"><div className="h-4 w-20 skeleton rounded" /></td>
-          <td className="px-5 py-3.5"><div className="h-4 w-24 skeleton rounded" /></td>
-          <td className="px-5 py-3.5"><div className="h-5 w-14 skeleton rounded-full" /></td>
-          <td className="px-5 py-3.5"><div className="h-4 w-8 skeleton rounded" /></td>
-        </tr>
-      ))}
-    </>
-  );
-}
-
-/* ══════════════════════════════════════════════════════════
-   CONFIRMATION DIALOG
-   ══════════════════════════════════════════════════════════ */
-function ConfirmDialog({ open, title, message, variant = "danger", onConfirm, onCancel, loading }) {
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="absolute inset-0 bg-navy-950/80 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative w-full max-w-sm rounded-2xl bg-navy-900 border border-border shadow-elevated animate-scale-in p-6 text-center">
-        <div className={`mx-auto w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${variant === "danger" ? "bg-danger/10" : "bg-primary/10"}`}>
-          {variant === "danger" ? (
-            <ShieldAlert className="w-7 h-7 text-danger" />
-          ) : (
-            <CheckCircle2 className="w-7 h-7 text-primary" />
-          )}
-        </div>
-        <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>
-        <p className="text-sm text-muted mb-6">{message}</p>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" className="flex-1" onClick={onCancel} disabled={loading}>
-            Cancel
-          </Button>
-          <Button
-            variant={variant === "danger" ? "danger" : "default"}
-            className="flex-1"
-            onClick={onConfirm}
-            loading={loading}
-          >
-            Confirm
-          </Button>
+    <div className="rounded-2xl bg-surface border border-border p-5 space-y-4 hover:border-border-light transition-colors">
+      <div className="flex items-start justify-between">
+        <div className={`w-10 h-10 rounded-xl ${a.bg} flex items-center justify-center`}>
+          <Icon className={`w-5 h-5 ${a.icon}`} />
         </div>
       </div>
+      <div>
+        <p className="text-3xl font-bold text-white">{fmtNum(value)}</p>
+        <p className="text-sm text-muted mt-0.5">{title}</p>
+      </div>
+      {sub && <p className="text-xs text-muted">{sub}</p>}
     </div>
   );
 }
 
-/* ══════════════════════════════════════════════════════════
-   USER DETAIL MODAL
-   ══════════════════════════════════════════════════════════ */
-function UserDetailModal({ userId, onClose }) {
-  const { data: user, isLoading } = useUser(userId);
-  const toggleStatus = useToggleUserStatus();
-  const [confirmAction, setConfirmAction] = useState(null);
+/* ── Pie colors ── */
+const ROLE_COLORS  = ["#22c55e", "#3b82f6", "#f59e0b", "#a855f7"];
+const FUNNEL_COLOR = "#3b82f6";
 
-  if (!userId) return null;
-
-  const handleToggleStatus = () => {
-    const newStatus = user.status === "Active" ? "Blocked" : "Active";
-    setConfirmAction({
-      title: newStatus === "Blocked" ? "Block User" : "Activate User",
-      message: `Are you sure you want to ${newStatus === "Blocked" ? "block" : "activate"} ${user.name}? ${newStatus === "Blocked" ? "They will lose access to the platform." : "They will regain access to the platform."}`,
-      variant: newStatus === "Blocked" ? "danger" : "success",
-      newStatus,
-    });
-  };
-
-  const handleConfirm = async () => {
-    await toggleStatus.mutateAsync({ id: userId, newStatus: confirmAction.newStatus });
-    setConfirmAction(null);
-    // Update local user object for immediate UI feedback
-    if (user) user.status = confirmAction.newStatus;
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="absolute inset-0 bg-navy-950/80 backdrop-blur-sm" onClick={onClose} />
-
-      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-navy-900 border border-border shadow-elevated animate-scale-in">
-        {isLoading ? (
-          <div className="p-10 flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-          </div>
-        ) : user ? (
-          <>
-            {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-border">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-primary/20">
-                  {user.name?.charAt(0)}
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-white">{user.name}</h2>
-                  <p className="text-sm text-muted">{user.email}</p>
-                </div>
-              </div>
-              <button onClick={onClose} className="p-2 rounded-xl text-muted hover:text-white hover:bg-surface-hover transition-colors cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Info Grid */}
-            <div className="p-5 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 rounded-xl bg-navy-950 border border-border">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Mail className="w-3.5 h-3.5 text-muted-foreground" />
-                    <p className="text-xs text-muted">Email</p>
-                  </div>
-                  <p className="text-sm font-medium text-white truncate">{user.email}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-navy-950 border border-border">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Phone className="w-3.5 h-3.5 text-muted-foreground" />
-                    <p className="text-xs text-muted">Phone</p>
-                  </div>
-                  <p className="text-sm font-medium text-white">{user.phone}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-navy-950 border border-border">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-                    <p className="text-xs text-muted">Join Date</p>
-                  </div>
-                  <p className="text-sm font-medium text-white">{formatDate(user.joinDate)}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-navy-950 border border-border">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Activity className="w-3.5 h-3.5 text-muted-foreground" />
-                    <p className="text-xs text-muted">Last Active</p>
-                  </div>
-                  <p className="text-sm font-medium text-white">{user.activity?.lastActive || "—"}</p>
-                </div>
-              </div>
-
-              {/* Activity Summary */}
-              {user.activity && (
-                <div>
-                  <p className="text-xs font-medium text-muted uppercase tracking-wider mb-3">Activity Summary</p>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="p-3 rounded-xl bg-navy-950 border border-border text-center">
-                      <LogIn className="w-4 h-4 text-primary mx-auto mb-1" />
-                      <p className="text-lg font-bold text-white">{user.activity.logins}</p>
-                      <p className="text-[11px] text-muted">Logins</p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-navy-950 border border-border text-center">
-                      <MousePointerClick className="w-4 h-4 text-info mx-auto mb-1" />
-                      <p className="text-lg font-bold text-white">{user.activity.searches}</p>
-                      <p className="text-[11px] text-muted">Searches</p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-navy-950 border border-border text-center">
-                      <Eye className="w-4 h-4 text-amber-400 mx-auto mb-1" />
-                      <p className="text-lg font-bold text-white">{user.activity.propertiesViewed}</p>
-                      <p className="text-[11px] text-muted">Properties</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Status Toggle */}
-              <div className="flex items-center justify-between p-4 rounded-xl bg-navy-950 border border-border">
-                <div>
-                  <p className="text-sm font-medium text-white">Account Status</p>
-                  <p className="text-xs text-muted mt-0.5">
-                    {user.status === "Active" ? "User can access the platform" : "User is blocked from the platform"}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Badge variant={STATUS_VARIANT[user.status]}>{user.status}</Badge>
-                  <Toggle
-                    checked={user.status === "Active"}
-                    onCheckedChange={handleToggleStatus}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-end gap-2 p-5 border-t border-border">
-              <Button variant="outline" size="sm" onClick={onClose}>Close</Button>
-            </div>
-          </>
-        ) : (
-          <div className="p-10 text-center text-muted">User not found</div>
-        )}
-      </div>
-
-      {/* Confirm Dialog */}
-      <ConfirmDialog
-        open={!!confirmAction}
-        title={confirmAction?.title}
-        message={confirmAction?.message}
-        variant={confirmAction?.variant}
-        onConfirm={handleConfirm}
-        onCancel={() => setConfirmAction(null)}
-        loading={toggleStatus.isPending}
-      />
-    </div>
-  );
-}
-
-/* ══════════════════════════════════════════════════════════
-   USERS PAGE (Main)
-   ══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════
+   USERS PAGE
+   ══════════════════════════════════════════ */
 export default function UsersPage() {
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [sortBy, setSortBy] = useState("joinDate");
-  const [sortOrder, setSortOrder] = useState("desc");
-  const [page, setPage] = useState(1);
-  const [selectedUserId, setSelectedUserId] = useState(null);
-  const [showFilters, setShowFilters] = useState(false);
-  const limit = 20;
+  const [dateRange] = useState(() => ({
+    from: "2025-01-01T00:00:00Z",
+    to: new Date().toISOString(),
+  }));
 
-  const { data, isLoading } = useUsers({
-    page,
-    limit,
-    status: statusFilter,
-    search,
-    sortBy,
-    sortOrder,
-    dateFrom: dateFrom || undefined,
-    dateTo: dateTo || undefined,
-  });
+  const activityQ  = useUserActivity(dateRange);
+  const signupsQ   = useUserSignups({ ...dateRange, granularity: "month" });
+  const funnelQ    = useOnboardingFunnel();
+  const rolesQ     = useRolesDistribution();
 
-  const users = data?.users || [];
-  const total = data?.total || 0;
-  const totalPages = data?.totalPages || 1;
+  const activity = activityQ.data ?? null;
+  const signups  = signupsQ.data  ?? null;
+  const funnel   = funnelQ.data   ?? null;
+  const roles    = rolesQ.data    ?? null;
 
-  const handleSort = useCallback((field) => {
-    setSortBy((prev) => {
-      if (prev === field) {
-        setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
-        return field;
-      }
-      setSortOrder("asc");
-      return field;
-    });
-    setPage(1);
-  }, []);
+  /* ── Signups chart ── */
+  const signupsChart = useMemo(() => {
+    if (!signups?.buckets) return [];
+    return signups.buckets.map((b) => ({
+      month: monthLabel(b.period),
+      signups: b.count,
+    }));
+  }, [signups]);
 
-  const clearFilters = useCallback(() => {
-    setStatusFilter("all");
-    setDateFrom("");
-    setDateTo("");
-    setSearch("");
-    setPage(1);
-  }, []);
+  /* ── Onboarding funnel chart ── */
+  const funnelChart = useMemo(() => {
+    if (!funnel?.steps) return [];
+    const labels = ["Registered", "Profile", "Preferences", "Dream Board", "Location", "Budget", "Completed"];
+    return funnel.steps.map((s, i) => ({
+      step: labels[i] || `Step ${s.step}`,
+      users: s.count,
+    }));
+  }, [funnel]);
 
-  const hasActiveFilters = statusFilter !== "all" || dateFrom || dateTo;
+  /* ── Roles pie ── */
+  const rolesPie = useMemo(() => {
+    if (!roles?.roles) return [];
+    return roles.roles.map((r, i) => ({
+      name: r.role.charAt(0).toUpperCase() + r.role.slice(1),
+      value: r.count,
+      color: ROLE_COLORS[i % ROLE_COLORS.length],
+    }));
+  }, [roles]);
+
+  /* ── Activity breakdown ── */
+  const activityPie = useMemo(() => {
+    if (!activity) return [];
+    return [
+      { name: "Active",       value: activity.activeUsers,       color: "#22c55e" },
+      { name: "Inactive",     value: activity.inactiveUsers,     color: "#64748b" },
+      { name: "Digest Users", value: activity.recentDigestUsers, color: "#3b82f6" },
+    ];
+  }, [activity]);
+
+  const refetchAll = () => {
+    activityQ.refetch();
+    signupsQ.refetch();
+    funnelQ.refetch();
+    rolesQ.refetch();
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -325,235 +199,214 @@ export default function UsersPage() {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Users</h1>
-          <p className="text-muted mt-1 text-sm">
-            Manage user accounts and permissions ·{" "}
-            <span className="text-white font-medium">{total}</span> total
-          </p>
+          <p className="text-muted mt-1 text-sm">User activity and growth analytics.</p>
         </div>
-        <Button>
-          <UserPlus className="w-4 h-4" /> Add User
-        </Button>
-      </div>
-
-      {/* ── Search + Filter Bar ── */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        {/* Search */}
-        <div className="relative flex-1 max-w-sm w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search by name, email, phone..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="w-full h-10 pl-10 pr-4 rounded-xl border border-border bg-navy-900 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:input-ring hover:border-border-light transition-all"
-          />
-          {search && (
-            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white cursor-pointer">
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
-        {/* Status filter */}
-        <div className="relative">
-          <Select
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            options={[
-              { value: "all", label: "All Status" },
-              { value: "active", label: "Active" },
-              { value: "blocked", label: "Blocked" },
-            ]}
-            size="sm"
-          />
-        </div>
-
-        {/* Toggle advanced filters */}
-        <Button
-          variant={showFilters ? "secondary" : "outline"}
-          size="sm"
-          onClick={() => setShowFilters(!showFilters)}
-        >
-          <Filter className="w-4 h-4" />
-          Filters
-          {hasActiveFilters && (
-            <span className="w-2 h-2 rounded-full bg-primary" />
-          )}
-        </Button>
-
-        {hasActiveFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters}>
-            <X className="w-3.5 h-3.5" /> Clear
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={refetchAll}>
+            <RefreshCw className="w-4 h-4" /> Refresh
           </Button>
-        )}
+          <Button variant="outline" size="sm">
+            <CalendarDays className="w-4 h-4" /> Jan 2025 — Today
+          </Button>
+        </div>
       </div>
 
-      {/* ── Advanced Filters ── */}
-      {showFilters && (
-        <Card className="p-4 animate-slide-down">
-          <div className="flex flex-wrap items-end gap-4">
-            <div>
-              <label className="block text-xs font-medium text-muted mb-1.5">From Date</label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
-                className="h-9 px-3 rounded-lg border border-border bg-navy-900 text-sm text-white focus:outline-none focus:input-ring transition-all"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-muted mb-1.5">To Date</label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
-                className="h-9 px-3 rounded-lg border border-border bg-navy-900 text-sm text-white focus:outline-none focus:input-ring transition-all"
-              />
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* ── Table ── */}
-      <Card className="p-0 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left px-5 py-3">
-                  <button onClick={() => handleSort("name")} className="flex items-center gap-1.5 text-xs font-medium text-muted uppercase tracking-wider hover:text-white transition-colors cursor-pointer">
-                    User <SortIcon field="name" current={sortBy} order={sortOrder} />
-                  </button>
-                </th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-muted uppercase tracking-wider">
-                  Phone
-                </th>
-                <th className="text-left px-5 py-3">
-                  <button onClick={() => handleSort("joinDate")} className="flex items-center gap-1.5 text-xs font-medium text-muted uppercase tracking-wider hover:text-white transition-colors cursor-pointer">
-                    Join Date <SortIcon field="joinDate" current={sortBy} order={sortOrder} />
-                  </button>
-                </th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-muted uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-muted uppercase tracking-wider w-16">
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <TableSkeleton rows={8} />
-              ) : users.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-5 py-16 text-center">
-                    <div className="flex flex-col items-center">
-                      <User className="w-10 h-10 text-muted-foreground mb-3" />
-                      <p className="text-white font-medium mb-1">No users found</p>
-                      <p className="text-sm text-muted">Try adjusting your search or filters</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                users.map((user, idx) => (
-                  <tr
-                    key={user.id}
-                    onClick={() => setSelectedUserId(user.id)}
-                    className="border-b border-border/50 last:border-0 hover:bg-surface-hover transition-colors cursor-pointer group"
-                  >
-                    {/* User (name + email) */}
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-sm font-semibold shrink-0 group-hover:bg-primary/15 transition-colors">
-                          {user.name?.charAt(0)}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-white group-hover:text-primary-light transition-colors truncate">
-                            {user.name}
-                          </p>
-                          <p className="text-xs text-muted truncate">{user.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    {/* Phone */}
-                    <td className="px-5 py-3.5 text-sm text-muted">{user.phone}</td>
-                    {/* Join Date */}
-                    <td className="px-5 py-3.5 text-sm text-muted">{formatDate(user.joinDate)}</td>
-                    {/* Status */}
-                    <td className="px-5 py-3.5">
-                      <Badge variant={STATUS_VARIANT[user.status] || "outline"}>{user.status}</Badge>
-                    </td>
-                    {/* View */}
-                    <td className="px-5 py-3.5">
-                      <button className="p-1.5 rounded-lg text-muted hover:text-white hover:bg-surface transition-colors cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Eye className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* ── Pagination ── */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-5 py-3 border-t border-border">
-            <p className="text-xs text-muted">
-              Showing <span className="text-white font-medium">{(page - 1) * limit + 1}</span>–
-              <span className="text-white font-medium">{Math.min(page * limit, total)}</span> of{" "}
-              <span className="text-white font-medium">{total}</span>
-            </p>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon-sm" disabled={page <= 1} onClick={() => setPage(1)}>
-                <ChevronsLeft className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="icon-sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-
-              {/* Page numbers */}
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (page <= 3) {
-                  pageNum = i + 1;
-                } else if (page >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = page - 2 + i;
-                }
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={page === pageNum ? "secondary" : "ghost"}
-                    size="icon-sm"
-                    onClick={() => setPage(pageNum)}
-                    className={page === pageNum ? "border border-primary/30 text-primary" : ""}
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
-
-              <Button variant="ghost" size="icon-sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="icon-sm" disabled={page >= totalPages} onClick={() => setPage(totalPages)}>
-                <ChevronsRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        )}
-      </Card>
-
-      {/* ── Detail Modal ── */}
-      {selectedUserId && (
-        <UserDetailModal
-          userId={selectedUserId}
-          onClose={() => setSelectedUserId(null)}
+      {/* ── KPI Cards ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          icon={Users}
+          title="Total Users"
+          value={activity?.totalUsers}
+          loading={activityQ.isLoading}
+          accent="blue"
         />
-      )}
+        <StatCard
+          icon={UserCheck}
+          title="Active Users"
+          value={activity?.activeUsers}
+          sub={activity ? `${((activity.activeUsers / activity.totalUsers) * 100).toFixed(1)}% of total` : undefined}
+          loading={activityQ.isLoading}
+          accent="green"
+        />
+        <StatCard
+          icon={UserX}
+          title="Inactive Users"
+          value={activity?.inactiveUsers}
+          sub={activity ? `${((activity.inactiveUsers / activity.totalUsers) * 100).toFixed(1)}% of total` : undefined}
+          loading={activityQ.isLoading}
+          accent="slate"
+        />
+        <StatCard
+          icon={Bell}
+          title="Digest Users"
+          value={activity?.recentDigestUsers}
+          sub="Engaged via digest"
+          loading={activityQ.isLoading}
+          accent="purple"
+        />
+      </div>
+
+      {/* ── Row 1: Signups + Roles ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* User Signups — Area Chart */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-primary" /> User Signups
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {signupsQ.isLoading ? <ChartSkeleton /> : (
+              <ResponsiveContainer width="100%" height={280}>
+                <AreaChart data={signupsChart}>
+                  <defs>
+                    <linearGradient id="gradSignups" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#22c55e" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(51,65,85,0.3)" />
+                  <XAxis dataKey="month" tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Area type="monotone" dataKey="signups" name="Signups" stroke="#22c55e" strokeWidth={2} fill="url(#gradSignups)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+            {signups && (
+              <p className="text-xs text-muted mt-2 text-center">
+                Total signups: <span className="text-white font-semibold">{fmtNum(signups.total)}</span>
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Roles Distribution — Pie */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" /> User Roles
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {rolesQ.isLoading ? <ChartSkeleton /> : (
+              <>
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie
+                      data={rolesPie}
+                      cx="50%" cy="50%"
+                      innerRadius={50} outerRadius={80}
+                      paddingAngle={4}
+                      dataKey="value"
+                    >
+                      {rolesPie.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} stroke="transparent" />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<ChartTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  {rolesPie.map((item) => (
+                    <div key={item.name} className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: item.color }} />
+                      <span className="text-xs text-muted truncate">{item.name}</span>
+                      <span className="text-xs font-medium text-white ml-auto">{fmtNum(item.value)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Row 2: Onboarding Funnel + Activity Breakdown ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Onboarding Funnel — Bar Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-primary" /> Onboarding Funnel
+              {funnel && (
+                <Badge variant="success" className="ml-auto text-[10px]">
+                  {funnel.completedPct}% completed
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {funnelQ.isLoading ? <ChartSkeleton /> : (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={funnelChart} barSize={28}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(51,65,85,0.3)" vertical={false} />
+                  <XAxis dataKey="step" tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} angle={-25} textAnchor="end" height={60} />
+                  <YAxis tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Bar dataKey="users" name="Users" fill={FUNNEL_COLOR} radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Activity Breakdown — Donut + Stats */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-primary" /> Activity Breakdown
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {activityQ.isLoading ? <ChartSkeleton /> : (
+              <>
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie
+                      data={activityPie}
+                      cx="50%" cy="50%"
+                      innerRadius={50} outerRadius={80}
+                      paddingAngle={4}
+                      dataKey="value"
+                    >
+                      {activityPie.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} stroke="transparent" />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<ChartTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="grid grid-cols-3 gap-3 mt-3">
+                  {activityPie.map((item) => (
+                    <div key={item.name} className="text-center p-2 rounded-xl bg-navy-950 border border-border">
+                      <div className="w-2.5 h-2.5 rounded-full mx-auto mb-1" style={{ background: item.color }} />
+                      <p className="text-lg font-bold text-white">{fmtNum(item.value)}</p>
+                      <p className="text-[11px] text-muted">{item.name}</p>
+                    </div>
+                  ))}
+                </div>
+                {activity && (
+                  <div className="mt-4 p-3 rounded-xl bg-navy-950 border border-border flex items-center justify-between">
+                    <span className="text-xs text-muted">Active rate</span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-24 h-2 bg-navy-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-green-500 transition-all duration-1000"
+                          style={{ width: `${Math.min((activity.activeUsers / activity.totalUsers) * 100, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-semibold text-white">
+                        {((activity.activeUsers / activity.totalUsers) * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

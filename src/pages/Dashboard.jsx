@@ -19,13 +19,9 @@ import {
   Heart,
   UserCheck,
   TrendingUp,
-  BarChart3,
   CalendarDays,
   RefreshCw,
-  Wifi,
-  WifiOff,
   Activity,
-  Layers,
 } from "lucide-react";
 import {
   useDashboardSummary,
@@ -52,94 +48,6 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-
-/* ══════════════════════════════════════════════
-   DEMO FALLBACK DATA
-   ══════════════════════════════════════════════ */
-const DEMO_DASHBOARD = {
-  totalUsers: 1243,
-  totalAgents: 87,
-  totalListings: 312,
-  totalChains: 45,
-  totalReferrals: 198,
-  activeListings: 278,
-  completedOnboarding: 934,
-  periodComparison: {
-    newUsers: { current: 142, previous: 118, changePct: 20.34 },
-    newAgents: { current: 12, previous: 9, changePct: 33.33 },
-    newChains: { current: 8, previous: 5, changePct: 60 },
-    newReferrals: { current: 34, previous: 28, changePct: 21.43 },
-    impressions: { current: 8920, previous: 7105, changePct: 25.54 },
-  },
-};
-
-const DEMO_SIGNUPS = {
-  buckets: [
-    { period: "2025-01-01T00:00:00.000Z", count: 45 },
-    { period: "2025-02-01T00:00:00.000Z", count: 62 },
-    { period: "2025-03-01T00:00:00.000Z", count: 78 },
-    { period: "2025-04-01T00:00:00.000Z", count: 91 },
-    { period: "2025-05-01T00:00:00.000Z", count: 103 },
-  ],
-  total: 379,
-};
-
-const DEMO_FUNNEL = {
-  steps: [
-    { step: 0, count: 210, pct: 16.89 },
-    { step: 1, count: 185, pct: 14.88 },
-    { step: 2, count: 160, pct: 12.87 },
-    { step: 3, count: 142, pct: 11.42 },
-    { step: 4, count: 128, pct: 10.3 },
-    { step: 5, count: 118, pct: 9.5 },
-    { step: 6, count: 300, pct: 24.14 },
-  ],
-  completedCount: 934,
-  completedPct: 75.14,
-};
-
-const DEMO_ROLES = {
-  roles: [
-    { role: "buyer", count: 812 },
-    { role: "seller", count: 534 },
-    { role: "renter", count: 198 },
-    { role: "landlord", count: 87 },
-  ],
-};
-
-const DEMO_ACTIVITY = {
-  activeUsers: 876,
-  inactiveUsers: 367,
-  recentDigestUsers: 412,
-  totalUsers: 1243,
-};
-
-const DEMO_SWIPE = {
-  totalSwiped: 14520,
-  totalLiked: 3870,
-  totalDismissed: 10650,
-  likeRate: 26.65,
-};
-
-const DEMO_LISTINGS = {
-  active: 278,
-  inactive: 34,
-  bySource: [
-    { sourceType: "pocket", count: 198 },
-    { sourceType: "rentcast", count: 82 },
-    { sourceType: "manual", count: 32 },
-  ],
-  priceBands: [
-    { label: "Under $200k", count: 28 },
-    { label: "$200k-$400k", count: 87 },
-    { label: "$400k-$600k", count: 104 },
-    { label: "$600k-$800k", count: 52 },
-    { label: "$800k-$1M", count: 28 },
-    { label: "$1M+", count: 13 },
-  ],
-  agentListed: 156,
-  organic: 156,
-};
 
 /* ── Helpers ── */
 function fmtNum(num) {
@@ -240,17 +148,15 @@ export default function Dashboard() {
   const swipeQ = useSwipeRates(dateRange);
   const listingsQ = useListingsOverview();
 
-  // ── Resolve data (fallback to demo) ──
-  const dash = dashQ.data || (dashQ.isError ? DEMO_DASHBOARD : null);
-  const signups = signupsQ.data || (signupsQ.isError ? DEMO_SIGNUPS : null);
-  const funnel = funnelQ.data || (funnelQ.isError ? DEMO_FUNNEL : null);
-  const roles = rolesQ.data || (rolesQ.isError ? DEMO_ROLES : null);
-  const activity = activityQ.data || (activityQ.isError ? DEMO_ACTIVITY : null);
-  const swipe = swipeQ.data || (swipeQ.isError ? DEMO_SWIPE : null);
-  const listings = listingsQ.data || (listingsQ.isError ? DEMO_LISTINGS : null);
+  const dash = dashQ.data ?? null;
+  const signups = signupsQ.data ?? null;
+  const funnel = funnelQ.data ?? null;
+  const roles = rolesQ.data ?? null;
+  const activity = activityQ.data ?? null;
+  const swipe = swipeQ.data ?? null;
+  const listings = listingsQ.data ?? null;
 
   const isLoading = dashQ.isLoading;
-  const isDemo = !dashQ.data && dashQ.isError;
 
   // ── KPI Cards from dashboard summary ──
   const kpiCards = useMemo(() => {
@@ -371,13 +277,6 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-navy-800 border border-border text-xs">
-            {isDemo ? (
-              <><WifiOff className="w-3 h-3 text-amber-400" /><span className="text-amber-400 font-medium">Demo Data</span></>
-            ) : (
-              <><Wifi className="w-3 h-3 text-primary" /><span className="text-primary font-medium">Live</span></>
-            )}
-          </div>
           <Button variant="outline" size="sm" onClick={refetchAll} title="Refresh all analytics">
             <RefreshCw className="w-4 h-4" /> Refresh
           </Button>

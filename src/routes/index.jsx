@@ -20,6 +20,7 @@ const EngagementPage = lazy(() => import("@/pages/Engagement"));
 const ChainsPage = lazy(() => import("@/pages/Chains"));
 const ReferralsPage = lazy(() => import("@/pages/Referrals"));
 const AgentAnalyticsPage = lazy(() => import("@/pages/AgentAnalytics"));
+const ChainManagementPage = lazy(() => import("@/pages/ChainManagement"));
 
 /**
  * Centralized route configuration.
@@ -46,6 +47,8 @@ export const protectedRoutes = [
   { path: "chains", element: <ChainsPage /> },
   { path: "referrals", element: <ReferralsPage /> },
   { path: "agent-analytics", element: <AgentAnalyticsPage /> },
+  /* ── Management sub-pages ── */
+  { path: "chain-management", element: <ChainManagementPage /> },
 ];
 
 /** Layout wrapper — ProtectedRoute guards the entire dashboard */

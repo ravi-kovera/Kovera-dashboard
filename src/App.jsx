@@ -5,19 +5,18 @@ import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { publicRoutes, layoutRoute, fallbackRoute } from "@/routes";
 import { Skeleton, SkeletonCard, ToastProvider } from "@/components/ui";
-import { OfflineBanner } from "@/components/common";
+import { OfflineBanner, ErrorBoundary } from "@/components/common";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 5 * 60 * 1000,
     },
   },
 });
 
-/* ── Page-level skeleton for lazy route loading ── */
 function PageSkeleton() {
   return (
     <div className="space-y-6 animate-fade-in p-1">
@@ -45,35 +44,32 @@ function PageSkeleton() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <ToastProvider>
-          <OfflineBanner />
-          <BrowserRouter>
-            <AuthProvider>
-            <Suspense fallback={<PageSkeleton />}>
-              <Routes>
-                {/* Public routes */}
-                {publicRoutes.map((route) => (
-                  <Route key={route.path} {...route} />
-                ))}
-
-                {/* Protected dashboard routes */}
-                <Route path={layoutRoute.path} element={layoutRoute.element}>
-                  {layoutRoute.children.map((route, idx) => (
-                    <Route key={route.path || idx} {...route} />
-                  ))}
-                </Route>
-
-                {/* Catch-all */}
-                <Route {...fallbackRoute} />
-              </Routes>
-            </Suspense>
-          </AuthProvider>
-        </BrowserRouter>
-        </ToastProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <ToastProvider>
+            <OfflineBanner />
+            <BrowserRouter>
+              <AuthProvider>
+                <Suspense fallback={<PageSkeleton />}>
+                  <Routes>
+                    {publicRoutes.map((route) => (
+                      <Route key={route.path} {...route} />
+                    ))}
+                    <Route path={layoutRoute.path} element={layoutRoute.element}>
+                      {layoutRoute.children.map((route, idx) => (
+                        <Route key={route.path || idx} {...route} />
+                      ))}
+                    </Route>
+                    <Route {...fallbackRoute} />
+                  </Routes>
+                </Suspense>
+              </AuthProvider>
+            </BrowserRouter>
+          </ToastProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

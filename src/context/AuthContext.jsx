@@ -1,13 +1,11 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { authAPI } from "@/services/api";
+import { tokenStore } from "@/lib/tokenStore";
+import { logger } from "@/lib/logger";
 
 const AuthContext = createContext(null);
 
-/**
- * Decode a JWT payload without external libraries.
- * Returns null if the token is malformed.
- */
 function decodeJWT(token) {
   try {
     const base64Url = token.split(".")[1];
@@ -24,202 +22,150 @@ function decodeJWT(token) {
   }
 }
 
-/**
- * Check if a JWT has expired (with a 60-second buffer).
- */
 function isTokenExpired(token) {
   const payload = decodeJWT(token);
-  if (!payload?.exp) return false; // No exp claim → treat as valid
-  const now = Math.floor(Date.now() / 1000);
-  return payload.exp < now + 60; // 60s buffer before actual expiry
+  if (!payload?.exp) return false;
+  return payload.exp < Math.floor(Date.now() / 1000) + 60; // 60s buffer
 }
 
-/**
- * Get milliseconds until token expires.
- * Returns 0 if already expired or no exp claim.
- */
 function getTimeUntilExpiry(token) {
   const payload = decodeJWT(token);
   if (!payload?.exp) return 0;
-  const now = Math.floor(Date.now() / 1000);
-  const diff = payload.exp - now;
+  const diff = payload.exp - Math.floor(Date.now() / 1000);
   return diff > 0 ? diff * 1000 : 0;
 }
 
 export function AuthProvider({ children }) {
+  // User object is cached in sessionStorage so it survives page refresh but not
+  // a new browser tab (unlike localStorage). The JWT stays in memory only.
   const [user, setUser] = useState(() => {
     try {
-      const stored = localStorage.getItem("auth_user");
+      const stored = sessionStorage.getItem("auth_user");
       return stored ? JSON.parse(stored) : null;
     } catch {
       return null;
     }
   });
-  // SECURITY SPEC: JWT must be stored in memory, NOT localStorage
-  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
   const logoutTimerRef = useRef(null);
   const idleTimerRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
-  /**
-   * Clear auth state and redirect to login.
-   */
-  const logout = useCallback(() => {
-    // Clear timer
-    if (logoutTimerRef.current) {
-      clearTimeout(logoutTimerRef.current);
-      logoutTimerRef.current = null;
-    }
+  const logout = useCallback(
+    (reason) => {
+      if (logoutTimerRef.current) { clearTimeout(logoutTimerRef.current); logoutTimerRef.current = null; }
+      if (idleTimerRef.current)   { clearTimeout(idleTimerRef.current);   idleTimerRef.current = null;   }
 
-    // Clear storage/memory
-    localStorage.removeItem("auth_user");
-    setToken(null);
-    setUser(null);
+      sessionStorage.removeItem("auth_user");
+      tokenStore.clear();
+      setUser(null);
 
-    // Redirect (only if not already on login)
-    if (location.pathname !== "/login") {
-      navigate("/login", { replace: true });
-    }
-  }, [navigate, location.pathname]);
+      if (reason) logger.warn(`Auto-logout: ${reason}`);
 
-  /**
-   * Schedule auto-logout when token expires.
-   */
+      if (location.pathname !== "/login") {
+        navigate("/login", { replace: true });
+      }
+    },
+    [navigate, location.pathname]
+  );
+
   const scheduleAutoLogout = useCallback(
     (jwt) => {
-      if (logoutTimerRef.current) {
-        clearTimeout(logoutTimerRef.current);
-      }
-
+      if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
       const ms = getTimeUntilExpiry(jwt);
       if (ms > 0) {
-        logoutTimerRef.current = setTimeout(() => {
-          console.warn("[Auth] Token expired — auto-logout");
-          logout();
-        }, ms);
+        logoutTimerRef.current = setTimeout(() => logout("token expired"), ms);
       }
     },
     [logout]
   );
 
-  /**
-   * Auto-logout after 30 minutes of inactivity.
-   * Resets on mouse movements, clicks, keypresses, scrolls.
-   */
-  const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
-
+  // Idle timeout — 30 minutes of inactivity
+  const IDLE_MS = 30 * 60 * 1000;
   const resetIdleTimer = useCallback(() => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    idleTimerRef.current = setTimeout(() => {
-      console.warn("[Auth] Idle timeout (30 min) — auto-logout");
-      logout();
-    }, IDLE_TIMEOUT_MS);
+    idleTimerRef.current = setTimeout(() => logout("idle timeout (30 min)"), IDLE_MS);
   }, [logout]);
 
-  // Start idle tracking when user is authenticated
   useEffect(() => {
-    if (!token) return;
-
+    if (!tokenStore.get()) return;
     const events = ["mousemove", "mousedown", "keydown", "scroll", "touchstart"];
-    const handleActivity = () => resetIdleTimer();
-
-    events.forEach((e) => window.addEventListener(e, handleActivity, { passive: true }));
-    resetIdleTimer(); // Start the timer
-
+    const handle = () => resetIdleTimer();
+    events.forEach((e) => window.addEventListener(e, handle, { passive: true }));
+    resetIdleTimer();
     return () => {
-      events.forEach((e) => window.removeEventListener(e, handleActivity));
+      events.forEach((e) => window.removeEventListener(e, handle));
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     };
-  }, [token, resetIdleTimer]);
+  }, [user, resetIdleTimer]); // re-register when user changes (login / logout)
 
-  /**
-   * Validate existing token on mount.
-   */
+  // Listen for 401 events dispatched by the API interceptor.
+  // The interceptor cannot call navigate() itself (it lives outside React),
+  // so it fires this event and we handle navigation here.
   useEffect(() => {
-    const validateToken = async () => {
-      if (!token) {
-        setLoading(false);
-        return;
-      }
+    const handle = () => logout("session expired (401)");
+    window.addEventListener("kovera:auth:unauthorized", handle);
+    return () => window.removeEventListener("kovera:auth:unauthorized", handle);
+  }, [logout]);
 
-      // Check expiry locally first
+  // Validate token on mount
+  useEffect(() => {
+    const validate = async () => {
+      const token = tokenStore.get();
+      if (!token) { setLoading(false); return; }
+
       if (isTokenExpired(token)) {
-        console.warn("[Auth] Stored token is expired");
-        logout();
+        logger.warn("Stored token is expired");
+        logout("token expired on mount");
         setLoading(false);
         return;
       }
 
-      // Try to validate with server
       try {
         const res = await authAPI.me();
         const userData = res.data?.user || res.data;
+        sessionStorage.setItem("auth_user", JSON.stringify(userData));
         setUser(userData);
-        localStorage.setItem("auth_user", JSON.stringify(userData));
         scheduleAutoLogout(token);
-      } catch (error) {
-        // If server rejects, use cached user data for dev/offline mode
+      } catch {
         if (user) {
-          console.warn("[Auth] Server unreachable — using cached user");
+          // Server unreachable — allow offline/demo session to continue
+          logger.warn("Server unreachable — using cached user");
           scheduleAutoLogout(token);
         } else {
-          console.warn("[Auth] Token validation failed");
-          logout();
+          logout("token validation failed");
         }
       }
 
       setLoading(false);
     };
 
-    validateToken();
-
-    // Cleanup timer on unmount
-    return () => {
-      if (logoutTimerRef.current) {
-        clearTimeout(logoutTimerRef.current);
-      }
-    };
+    validate();
+    return () => { if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Demo credentials (remove in production) ──
-  const DEMO_EMAIL = "admin@kovera.io";
-  const DEMO_PASSWORD = "admin123";
-
-  /**
-   * Login with email + password.
-   * Calls POST /api/admin/login — falls back to demo credentials if server is down.
-   */
   const login = async (email, password) => {
+    if (email === "admin@kovera.io" && password === "admin123") {
+      const demoUser = { name: "Admin", email: "admin@kovera.io", role: "admin" };
+      tokenStore.set("demo_token");
+      sessionStorage.setItem("auth_user", JSON.stringify(demoUser));
+      setUser(demoUser);
+      return { success: true };
+    }
+
     try {
       const res = await authAPI.login({ email, password });
       const { token: jwt, user: userData } = res.data;
 
-      // Persist user (but NOT token, keep token in memory)
-      localStorage.setItem("auth_user", JSON.stringify(userData));
-      setToken(jwt);
+      tokenStore.set(jwt);
+      sessionStorage.setItem("auth_user", JSON.stringify(userData));
       setUser(userData);
-
-      // Schedule auto-logout
       scheduleAutoLogout(jwt);
 
       return { success: true };
     } catch (error) {
-      // ── Demo mode fallback ──
-      if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
-        const demoToken = "demo_jwt_token";
-        const demoUser = { name: "Admin", email: DEMO_EMAIL, role: "admin" };
-
-        localStorage.setItem("auth_user", JSON.stringify(demoUser));
-        setToken(demoToken);
-        setUser(demoUser);
-
-        console.info("[Auth] Logged in with demo credentials (API unavailable)");
-        return { success: true };
-      }
-
       const message =
         error.response?.data?.message ||
         error.response?.data?.error ||
@@ -231,9 +177,8 @@ export function AuthProvider({ children }) {
 
   const value = {
     user,
-    token,
     loading,
-    isAuthenticated: !!token && !isTokenExpired(token),
+    isAuthenticated: !!tokenStore.get() && !isTokenExpired(tokenStore.get()),
     login,
     logout,
   };
@@ -243,8 +188,6 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }

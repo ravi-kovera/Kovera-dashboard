@@ -14,6 +14,7 @@ import {
   Link2,
   Share2,
   UserCog,
+  GitBranch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/context/SidebarContext";
@@ -38,6 +39,7 @@ const analyticsNav = [
 const managementNav = [
   { to: "/properties", label: "Properties", icon: Building2 },
   { to: "/trades", label: "Trades", icon: ArrowLeftRight },
+  { to: "/chain-management", label: "Chains", icon: GitBranch },
 ];
 
 const systemNav = [
