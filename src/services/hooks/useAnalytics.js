@@ -233,6 +233,24 @@ export function useAgentRequests() {
   });
 }
 
+export function useSendAgentInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => analyticsAPI.sendAgentInvite(id).then((r) => r.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["analytics", "agent-requests"] });
+      window.dispatchEvent(new CustomEvent("kovera:toast", {
+        detail: { type: "success", title: "Invite Sent", message: "Onboarding invitation sent to agent." },
+      }));
+    },
+    onError: (err) => {
+      window.dispatchEvent(new CustomEvent("kovera:toast", {
+        detail: { type: "error", title: "Error", message: err?.response?.data?.error || "Failed to send invite." },
+      }));
+    },
+  });
+}
+
 export function useApproveAgentRequest() {
   const queryClient = useQueryClient();
   return useMutation({

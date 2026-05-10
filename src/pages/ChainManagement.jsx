@@ -1,4 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { analyticsAPI } from "@/services/api/analytics";
 import {
   Card,
   CardHeader,
@@ -31,6 +33,7 @@ import {
 import {
   useNetworkChains,
   useAgentRequests,
+  useSendAgentInvite,
   useApproveAgentRequest,
   useRejectAgentRequest,
   useAssignAgent,
@@ -131,7 +134,9 @@ function ConfirmDialog({ open, title, message, confirmLabel, variant = "danger",
 }
 
 /* ── Agent Request Row ── */
-function AgentRequestRow({ req, onApprove, onReject, approving, rejecting }) {
+function AgentRequestRow({ req, onInvite, onApprove, onReject, inviting, approving, rejecting }) {
+  const [confirmInvite,  setConfirmInvite]  = useState(false);
+  const [confirmResend,  setConfirmResend]  = useState(false);
   const [confirmApprove, setConfirmApprove] = useState(false);
   const [confirmReject,  setConfirmReject]  = useState(false);
 
@@ -151,6 +156,19 @@ function AgentRequestRow({ req, onApprove, onReject, approving, rejecting }) {
         <div className="flex items-center gap-1 mt-0.5">
           <Mail className="w-3 h-3 text-muted-foreground shrink-0" />
           <p className="text-xs text-muted truncate">{req.agentEmail}</p>
+        </div>
+        <div className="flex items-center gap-1.5 mt-1">
+          {req.agentOnPlatform ? (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+              <ShieldCheck className="w-2.5 h-2.5" />
+              On platform{req.agentName ? ` · ${req.agentName}` : ""}{req.agentBrokerage ? ` · ${req.agentBrokerage}` : ""}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <UserX className="w-2.5 h-2.5" />
+              Needs onboarding
+            </span>
+          )}
         </div>
       </div>
 
@@ -178,34 +196,81 @@ function AgentRequestRow({ req, onApprove, onReject, approving, rejecting }) {
 
       {/* Actions */}
       <div className="flex items-center gap-2 shrink-0">
-        <Button
-          size="sm"
-          className="bg-green-600 hover:bg-green-500 text-white border-0 h-7 px-3 text-xs"
-          onClick={() => setConfirmApprove(true)}
-          disabled={approving || rejecting}
-        >
-          {approving
-            ? <span className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
-            : <><CheckCircle2 className="w-3 h-3" /> Approve</>}
-        </Button>
+        {req.agentOnPlatform ? (
+          /* Agent is on platform — show Approve */
+          <Button
+            size="sm"
+            className="bg-green-600 hover:bg-green-500 text-white border-0 h-7 px-3 text-xs"
+            onClick={() => setConfirmApprove(true)}
+            disabled={approving || rejecting}
+          >
+            {approving
+              ? <span className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
+              : <><CheckCircle2 className="w-3 h-3 mr-1" />Approve</>}
+          </Button>
+        ) : req.status === "invited" ? (
+          /* Invite already sent — offer resend */
+          <Button
+            size="sm"
+            className="bg-slate-600/20 text-slate-300 border border-slate-500/30 h-7 px-3 text-xs hover:bg-blue-600/20 hover:text-blue-300 hover:border-blue-500/30 transition-colors"
+            onClick={() => setConfirmResend(true)}
+            disabled={inviting || rejecting}
+          >
+            {inviting
+              ? <span className="w-3 h-3 border border-slate-400/30 border-t-slate-300 rounded-full animate-spin" />
+              : <><Mail className="w-3 h-3 mr-1" />Resend</>}
+          </Button>
+        ) : (
+          /* Not on platform, not yet invited — show Send Invite */
+          <Button
+            size="sm"
+            className="bg-blue-600 hover:bg-blue-500 text-white border-0 h-7 px-3 text-xs"
+            onClick={() => setConfirmInvite(true)}
+            disabled={inviting || rejecting}
+          >
+            {inviting
+              ? <span className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
+              : <><Mail className="w-3 h-3 mr-1" />Send Invite</>}
+          </Button>
+        )}
         <Button
           variant="outline"
           size="sm"
           className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500/50 h-7 px-3 text-xs"
           onClick={() => setConfirmReject(true)}
-          disabled={approving || rejecting}
+          disabled={inviting || approving || rejecting}
         >
           {rejecting
             ? <span className="w-3 h-3 border border-red-400/30 border-t-red-400 rounded-full animate-spin" />
-            : <><XCircle className="w-3 h-3" /> Reject</>}
+            : <><XCircle className="w-3 h-3 mr-1" />Reject</>}
         </Button>
       </div>
 
       <ConfirmDialog
+        open={confirmInvite}
+        title="Send Onboarding Invite"
+        message={`Send an invitation to ${req.agentEmail} to create their Kovera agent account and join chain ${req.networkChainId ?? `#${req.chainId}`}.`}
+        confirmLabel="Send Invite"
+        variant="default"
+        loading={inviting}
+        onConfirm={() => { onInvite(req.id); setConfirmInvite(false); }}
+        onCancel={() => setConfirmInvite(false)}
+      />
+      <ConfirmDialog
+        open={confirmResend}
+        title="Resend Invite"
+        message={`Resend the onboarding invitation to ${req.agentEmail}? A new link will be generated and the previous one will expire.`}
+        confirmLabel="Resend"
+        variant="default"
+        loading={inviting}
+        onConfirm={() => { onInvite(req.id); setConfirmResend(false); }}
+        onCancel={() => setConfirmResend(false)}
+      />
+      <ConfirmDialog
         open={confirmApprove}
         title="Approve Agent Association"
-        message={`Associate agent (${req.agentEmail}) with ${req.networkChainId ?? `Chain #${req.chainId}`} and send a Kovera invitation.`}
-        confirmLabel="Approve & Invite"
+        message={`Connect ${req.agentName || req.agentEmail} with ${req.userName || req.userId} on chain ${req.networkChainId ?? `#${req.chainId}`}.`}
+        confirmLabel="Approve"
         variant="success"
         loading={approving}
         onConfirm={() => { onApprove(req.id); setConfirmApprove(false); }}
@@ -315,14 +380,14 @@ function AssignAgentModal({ participant, onClose, onAssign, loading }) {
   );
 }
 
-/* ── Role accent colors (border top + avatar bg) ── */
+/* ── Role accent colors ── */
 const ROLE_ACCENT = {
-  buyer:    { bar: "#3b82f6", avatar: "bg-blue-500/20 text-blue-300",   label: "bg-blue-500/10 text-blue-400"   },
-  seller:   { bar: "#22c55e", avatar: "bg-green-500/20 text-green-300", label: "bg-green-500/10 text-green-400" },
-  landlord: { bar: "#f59e0b", avatar: "bg-amber-500/20 text-amber-300", label: "bg-amber-500/10 text-amber-400" },
-  renter:   { bar: "#a855f7", avatar: "bg-purple-500/20 text-purple-300",label: "bg-purple-500/10 text-purple-400"},
+  buyer:    { bar: "#3b82f6", barBg: "rgba(59,130,246,0.15)",  avatar: "bg-blue-500/20 text-blue-300",    label: "bg-blue-500/10 text-blue-400 border border-blue-500/20"    },
+  seller:   { bar: "#22c55e", barBg: "rgba(34,197,94,0.15)",   avatar: "bg-green-500/20 text-green-300",  label: "bg-green-500/10 text-green-400 border border-green-500/20"  },
+  landlord: { bar: "#f59e0b", barBg: "rgba(245,158,11,0.15)",  avatar: "bg-amber-500/20 text-amber-300",  label: "bg-amber-500/10 text-amber-400 border border-amber-500/20"  },
+  renter:   { bar: "#a855f7", barBg: "rgba(168,85,247,0.15)",  avatar: "bg-purple-500/20 text-purple-300",label: "bg-purple-500/10 text-purple-400 border border-purple-500/20"},
 };
-const DEFAULT_ACCENT = { bar: "#64748b", avatar: "bg-slate-500/20 text-slate-300", label: "bg-slate-500/10 text-slate-400" };
+const DEFAULT_ACCENT = { bar: "#64748b", barBg: "rgba(100,116,139,0.15)", avatar: "bg-slate-500/20 text-slate-300", label: "bg-slate-500/10 text-slate-400 border border-slate-500/20" };
 
 /* ── Single flow node ── */
 function FlowNode({ participant, index, onAssign }) {
@@ -330,79 +395,77 @@ function FlowNode({ participant, index, onAssign }) {
   const agented = participant.hasAgent;
   const pending = !agented && participant.pendingAgentEmail;
 
-  const borderCls = agented
-    ? "border-green-500/30 shadow-[0_0_12px_rgba(34,197,94,0.08)]"
+  const outerCls = agented
+    ? "border-green-500/25 shadow-[0_2px_16px_rgba(34,197,94,0.10)]"
     : pending
-      ? "border-blue-500/40 shadow-[0_0_12px_rgba(59,130,246,0.12)]"
-      : "border-amber-500/30 shadow-[0_0_12px_rgba(245,158,11,0.10)] hover:border-amber-400/50";
+      ? "border-blue-500/35 shadow-[0_2px_16px_rgba(59,130,246,0.10)]"
+      : "border-border hover:border-amber-500/40 hover:shadow-[0_2px_16px_rgba(245,158,11,0.08)]";
 
   return (
-    <div className={`relative flex flex-col w-48 shrink-0 rounded-xl border bg-navy-900 overflow-hidden transition-all group ${borderCls}`}>
-      {/* Role color top bar */}
-      <div className="h-1 w-full" style={{ background: accent.bar }} />
-
-      <div className="p-3 flex flex-col gap-2.5">
-        {/* Avatar + name */}
-        <div className="flex items-center gap-2">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 ${accent.avatar}`}>
-            {(participant.name || participant.userId || "?").charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-white leading-tight truncate">
-              {participant.name || participant.userId}
-            </p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Node {index + 1}</p>
+    <div className={`relative flex flex-col w-52 shrink-0 rounded-2xl border bg-navy-900 overflow-hidden transition-all duration-200 group ${outerCls}`}>
+      {/* Header band */}
+      <div className="px-3.5 pt-3 pb-2.5 flex items-center gap-2.5" style={{ background: accent.barBg }}>
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${accent.avatar} ring-1 ring-white/5`}>
+          {(participant.name || participant.userId || "?").charAt(0).toUpperCase()}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold text-white leading-tight truncate">
+            {participant.name || participant.userId}
+          </p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className={`px-1.5 py-px rounded text-[9px] font-semibold uppercase tracking-wide ${accent.label}`}>
+              {participant.role || "unknown"}
+            </span>
+            <span className="text-[9px] text-muted-foreground">#{index + 1}</span>
           </div>
         </div>
+      </div>
 
+      {/* Body */}
+      <div className="px-3.5 pb-3 pt-2 flex flex-col gap-2">
         {/* Address */}
         {participant.address && (
-          <p className="text-[10px] text-muted leading-snug line-clamp-2">{participant.address}</p>
+          <p className="text-[10px] text-muted leading-snug line-clamp-2 flex items-start gap-1">
+            <span className="shrink-0 mt-px opacity-50">📍</span>
+            {participant.address}
+          </p>
         )}
 
-        {/* Pending agent request info */}
-        {pending && (
-          <div className="flex items-start gap-1.5 px-2 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
-            <Clock className="w-3 h-3 text-blue-400 shrink-0 mt-0.5" />
+        {/* Agent / pending / needed pill */}
+        {agented && (participant.agentName || participant.agentEmail) ? (
+          <div className="flex items-start gap-2 px-2.5 py-2 rounded-xl bg-green-500/8 border border-green-500/20">
+            <ShieldCheck className="w-3.5 h-3.5 text-green-400 shrink-0 mt-0.5" />
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold text-blue-300 leading-tight">Pending Review</p>
-              <p className="text-[10px] text-blue-400/80 truncate">{participant.pendingAgentEmail}</p>
+              {participant.agentName && (
+                <p className="text-[10px] font-semibold text-green-300 leading-tight truncate">{participant.agentName}</p>
+              )}
+              {participant.agentEmail && (
+                <p className="text-[10px] text-green-400/70 truncate">{participant.agentEmail}</p>
+              )}
             </div>
           </div>
-        )}
-
-        {/* Footer: role + agent status */}
-        <div className="flex items-center justify-between gap-1 pt-1 border-t border-border/50">
-          {participant.role && (
-            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium capitalize ${accent.label}`}>
-              {participant.role}
-            </span>
-          )}
-          {agented ? (
-            <span className="flex items-center gap-0.5 text-[10px] text-green-400 font-medium ml-auto">
-              <ShieldCheck className="w-3 h-3" /> Agent
-            </span>
-          ) : pending ? (
-            <span className="flex items-center gap-0.5 text-[10px] text-blue-400 font-medium ml-auto">
-              <Clock className="w-3 h-3" /> Pending
-            </span>
-          ) : (
-            <span className="flex items-center gap-0.5 text-[10px] text-amber-400 font-medium ml-auto">
-              <UserX className="w-3 h-3" /> Needed
-            </span>
-          )}
-        </div>
-
-        {/* Assign button — only for unagented, non-pending nodes */}
-        {!agented && !pending && (
+        ) : agented ? (
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-green-500/8 border border-green-500/20">
+            <ShieldCheck className="w-3.5 h-3.5 text-green-400 shrink-0" />
+            <p className="text-[10px] font-semibold text-green-300">Agent assigned</p>
+          </div>
+        ) : pending ? (
+          <div className="flex items-start gap-2 px-2.5 py-2 rounded-xl bg-blue-500/8 border border-blue-500/20">
+            <Clock className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold text-blue-300 leading-tight">Pending review</p>
+              <p className="text-[10px] text-blue-400/70 truncate">{participant.pendingAgentEmail}</p>
+            </div>
+          </div>
+        ) : (
           <button
             onClick={(e) => { e.stopPropagation(); onAssign(participant); }}
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold
-              bg-amber-500/10 text-amber-400 border border-amber-500/20
-              hover:bg-amber-500/20 hover:border-amber-400/40
+            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-semibold
+              bg-amber-500/8 text-amber-400 border border-amber-500/25
+              hover:bg-amber-500/15 hover:border-amber-400/40
               transition-all cursor-pointer"
           >
-            <UserCheck className="w-3 h-3" /> Assign Agent
+            <UserCheck className="w-3.5 h-3.5" /> Assign Agent
           </button>
         )}
       </div>
@@ -413,13 +476,20 @@ function FlowNode({ participant, index, onAssign }) {
 /* ── SVG arrow connector ── */
 function FlowArrow() {
   return (
-    <div className="flex items-center shrink-0 px-1">
-      <svg width="32" height="16" viewBox="0 0 32 16" fill="none">
-        <line x1="0" y1="8" x2="24" y2="8" stroke="#334155" strokeWidth="1.5" strokeDasharray="3 2" />
-        <polyline points="20,4 26,8 20,12" stroke="#334155" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" fill="none" />
+    <div className="flex flex-col items-center shrink-0 px-1 gap-1 self-center">
+      <svg width="36" height="12" viewBox="0 0 36 12" fill="none">
+        <line x1="0" y1="6" x2="28" y2="6" stroke="#1e293b" strokeWidth="2" />
+        <polyline points="24,2 30,6 24,10" stroke="#475569" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" fill="none" />
       </svg>
     </div>
   );
+}
+
+/* ── Chain status derived colors ── */
+function chainStatusMeta(pct, hasPending) {
+  if (pct === 100) return { leftBar: "#22c55e", badge: "bg-green-500/10 text-green-400 border border-green-500/20" };
+  if (hasPending)  return { leftBar: "#3b82f6", badge: "bg-blue-500/10 text-blue-400 border border-blue-500/20"   };
+  return              { leftBar: "#f59e0b", badge: "bg-amber-500/10 text-amber-400 border border-amber-500/20"  };
 }
 
 /* ── Chain Row (expandable with flow diagram) ── */
@@ -432,120 +502,109 @@ function ChainRow({ chain, onAssignNode }) {
   const typeCls        = CHAIN_TYPE_COLOR[chain.chainType] || "bg-slate-500/10 text-slate-400";
   const typeLabel      = CHAIN_TYPE_LABEL[chain.chainType] || chain.chainType || "Unknown";
   const hasPending     = pendingCount > 0;
-  const outerBorder    = expanded ? "border-border-light" : hasPending ? "border-blue-500/40" : "border-border";
-
-  /* Progress bar: how many nodes are agented */
-  const pct = participants.length > 0 ? (agentedCount / participants.length) * 100 : 0;
+  const pct            = participants.length > 0 ? (agentedCount / participants.length) * 100 : 0;
+  const fullyAgented   = pct === 100;
+  const { leftBar }    = chainStatusMeta(pct, hasPending);
 
   return (
-    <div className={`rounded-xl border bg-navy-950 overflow-hidden transition-colors ${outerBorder}`}>
-      {/* ── Header row ── */}
-      <button
-        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-surface-hover transition-colors text-left"
-        onClick={() => setExpanded((v) => !v)}
-      >
-        {expanded
-          ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
-          : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
-
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="text-sm font-semibold text-white">{chain.chainId}</span>
-          <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium ${typeCls}`}>{typeLabel}</span>
-          {hasPending && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-500/10 text-blue-400">
-              <Clock className="w-3 h-3" />
-              {pendingCount} Pending
-            </span>
-          )}
-          {needsAgent && !hasPending && (
-            <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-500/10 text-amber-400">
-              Needs Agent
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-4 shrink-0">
-          {/* Agent progress bar */}
-          <div className="hidden sm:flex items-center gap-2">
-            <div className="w-20 h-1.5 rounded-full bg-navy-800 overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${pct}%`,
-                  background: pct === 100 ? "#22c55e" : "#f59e0b",
-                }}
-              />
+    <div className={`rounded-2xl border bg-navy-950 overflow-hidden transition-all duration-200 ${expanded ? "border-border-light shadow-md" : hasPending ? "border-blue-500/30" : fullyAgented ? "border-green-500/20" : "border-border hover:border-border-light"}`}>
+      <div className="flex">
+        <div className="flex-1 min-w-0">
+          {/* ── Header ── */}
+          <button
+            className="w-full flex items-center gap-3 px-4 py-4 hover:bg-surface-hover/50 transition-colors text-left"
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {/* Chevron */}
+            <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors ${expanded ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-white"}`}>
+              {expanded
+                ? <ChevronDown className="w-3.5 h-3.5" />
+                : <ChevronRight className="w-3.5 h-3.5" />}
             </div>
-            <span className="text-[11px] text-muted">{agentedCount}/{participants.length}</span>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-muted">
-            <Layers className="w-3.5 h-3.5" />
-            <span>{chain.length} nodes</span>
-          </div>
-        </div>
-      </button>
 
-      {/* ── Flow diagram ── */}
-      {expanded && (
-        <div className="border-t border-border/60 bg-navy-950/50">
-          {/* Chain meta strip */}
-          <div className="flex items-center gap-4 px-4 py-2.5 border-b border-border/40 text-xs text-muted">
-            <span className="flex items-center gap-1.5">
-              <GitBranch className="w-3.5 h-3.5" />
-              {participants.length} participants
-            </span>
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-green-400" />
-              {agentedCount} agented
-            </span>
-            {(participants.length - agentedCount) > 0 && (
-              <span className="flex items-center gap-1.5 text-amber-400">
-                <UserX className="w-3.5 h-3.5" />
-                {participants.length - agentedCount} need agent
-              </span>
-            )}
-            {/* Full progress */}
-            <div className="ml-auto flex items-center gap-2">
-              <div className="w-28 h-1.5 rounded-full bg-navy-800 overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{
-                    width: `${pct}%`,
-                    background: pct === 100 ? "#22c55e" : "#f59e0b",
-                  }}
-                />
+            {/* Chain ID + type */}
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-sm font-bold text-white font-mono tracking-tight">{chain.chainId}</span>
+                <span className={`px-2 py-0.5 rounded-lg text-[11px] font-medium ${typeCls}`}>{typeLabel}</span>
               </div>
-              <span className="text-[11px]">{Math.round(pct)}%</span>
+              <div className="hidden sm:flex items-center gap-1.5 ml-1">
+                {hasPending && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    <Clock className="w-3 h-3" />{pendingCount} pending
+                  </span>
+                )}
+                {needsAgent && !hasPending && (
+                  <span className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    Needs agent
+                  </span>
+                )}
+                {fullyAgented && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+                    <ShieldCheck className="w-3 h-3" /> Complete
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Scrollable node flow */}
-          <div className="overflow-x-auto px-4 py-5">
-            <div className="flex items-start" style={{ minWidth: "max-content" }}>
-              {participants.map((p, i) => (
-                <div key={p.userId || i} className="flex items-center">
-                  <FlowNode participant={p} index={i} onAssign={onAssignNode} />
-                  {i < participants.length - 1 && <FlowArrow />}
+            {/* Right-side stats */}
+            <div className="flex items-center gap-4 shrink-0">
+              {/* Progress */}
+              <div className="hidden sm:flex flex-col items-end gap-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-24 h-1.5 rounded-full bg-navy-800 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${pct}%`, background: leftBar }}
+                    />
+                  </div>
+                  <span className="text-[11px] text-muted w-8 text-right">{agentedCount}/{participants.length}</span>
                 </div>
-              ))}
+                <span className="text-[10px] text-muted-foreground">agents</span>
+              </div>
+              {/* Node count */}
+              <div className="flex flex-col items-center justify-center w-12 h-10 rounded-xl bg-navy-900 border border-border">
+                <span className="text-sm font-bold text-white leading-none">{chain.length}</span>
+                <span className="text-[9px] text-muted-foreground mt-0.5">nodes</span>
+              </div>
             </div>
-          </div>
+          </button>
 
-          {/* Legend */}
-          <div className="flex items-center gap-4 px-4 pb-3 text-[10px] text-muted-foreground flex-wrap">
-            {Object.entries(ROLE_ACCENT).map(([role, a]) => (
-              <span key={role} className="flex items-center gap-1">
-                <span className="inline-block w-2 h-2 rounded-sm" style={{ background: a.bar }} />
-                {role.charAt(0).toUpperCase() + role.slice(1)}
-              </span>
-            ))}
-            <span className="ml-auto flex items-center gap-3">
-              <span className="flex items-center gap-1 text-green-400"><ShieldCheck className="w-3 h-3" /> Agented</span>
-              <span className="flex items-center gap-1 text-amber-400"><UserX className="w-3 h-3" /> Needs Agent</span>
-            </span>
-          </div>
+          {/* ── Expanded flow diagram ── */}
+          {expanded && (
+            <div className="border-t border-border/50">
+              {/* Scrollable nodes */}
+              <div className="overflow-x-auto px-5 py-5">
+                <div className="flex items-center" style={{ minWidth: "max-content" }}>
+                  {participants.map((p, i) => (
+                    <div key={p.userId || i} className="flex items-center">
+                      <FlowNode participant={p} index={i} onAssign={onAssignNode} />
+                      {i < participants.length - 1 && <FlowArrow />}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Footer legend */}
+              <div className="flex items-center gap-4 px-5 py-2.5 border-t border-border/40 bg-navy-900/40">
+                <div className="flex items-center gap-3 flex-wrap">
+                  {Object.entries(ROLE_ACCENT).map(([role, a]) => (
+                    <span key={role} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                      <span className="inline-block w-2 h-2 rounded-full" style={{ background: a.bar }} />
+                      {role.charAt(0).toUpperCase() + role.slice(1)}
+                    </span>
+                  ))}
+                </div>
+                <div className="ml-auto flex items-center gap-3 text-[10px]">
+                  <span className="flex items-center gap-1 text-green-400"><ShieldCheck className="w-3 h-3" /> Agented</span>
+                  <span className="flex items-center gap-1 text-blue-400"><Clock className="w-3 h-3" /> Pending</span>
+                  <span className="flex items-center gap-1 text-amber-400"><UserX className="w-3 h-3" /> Needed</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -607,12 +666,30 @@ export default function ChainManagementPage() {
 
   const requestsQ = useAgentRequests();
   const chainsQ   = useNetworkChains({ minLength: 2 });
+  const invite    = useSendAgentInvite();
   const approve   = useApproveAgentRequest();
   const reject    = useRejectAgentRequest();
   const assign    = useAssignAgent();
 
-  const requests = requestsQ.data?.requests ?? [];
-  const chains   = chainsQ.data?.chains     ?? [];
+  const queryClient = useQueryClient();
+
+  const allRequests = requestsQ.data?.requests ?? [];
+  const chains      = chainsQ.data?.chains     ?? [];
+
+  /* ── Split out broken-chain requests and auto-reject them ── */
+  const activeRequests      = useMemo(() => allRequests.filter((r) => r.chainStatus !== "broken"), [allRequests]);
+  const brokenChainRequests = useMemo(() => allRequests.filter((r) => r.chainStatus === "broken"),  [allRequests]);
+
+  const closedIdsRef = useRef(new Set());
+  useEffect(() => {
+    const toClose = brokenChainRequests.filter((r) => !closedIdsRef.current.has(r.id));
+    if (!toClose.length) return;
+    toClose.forEach((r) => closedIdsRef.current.add(r.id));
+    Promise.all(toClose.map((r) => analyticsAPI.rejectAgentRequest(r.id).catch(() => {})))
+      .then(() => queryClient.invalidateQueries({ queryKey: ["analytics", "agent-requests"] }));
+  }, [brokenChainRequests, queryClient]);
+
+  const requests = activeRequests;
 
   /* ── Stats ── */
   const pendingCount   = requests.length;
@@ -751,8 +828,10 @@ export default function ChainManagementPage() {
                   <AgentRequestRow
                     key={req.id}
                     req={req}
+                    onInvite={(id) => invite.mutate(id)}
                     onApprove={(id) => approve.mutate(id)}
                     onReject={(id) => reject.mutate(id)}
+                    inviting={invite.isPending  && invite.variables  === req.id}
                     approving={approve.isPending && approve.variables === req.id}
                     rejecting={reject.isPending  && reject.variables  === req.id}
                   />

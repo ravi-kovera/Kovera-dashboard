@@ -100,6 +100,9 @@ export const analyticsAPI = {
   getAgentRequests: () =>
     analyticsClient.get("/api/analytics/agent-requests"),
 
+  sendAgentInvite: (id) =>
+    analyticsClient.post(`/api/analytics/agent-requests/${id}/invite`),
+
   approveAgentRequest: (id) =>
     analyticsClient.post(`/api/analytics/agent-requests/${id}/approve`),
 
@@ -108,4 +111,11 @@ export const analyticsAPI = {
 
   assignAgent: (data) =>
     analyticsClient.post("/api/analytics/agent-requests/assign", data),
+
+  // ── Map coordinates ──
+  getListingsMap: () =>
+    analyticsClient.get("/api/analytics/listings/map"),
+
+  getChainsMap: () =>
+    analyticsClient.get("/api/analytics/chains/map"),
 };
