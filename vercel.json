@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/ms-auth/:path*",
+      "destination": "http://18.119.38.181:3002/:path*"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://app.kovera.io/api/:path*"
     },
