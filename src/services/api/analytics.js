@@ -127,4 +127,11 @@ export const analyticsAPI = {
 
     getAgentsList: (params) =>
         analyticsClient.get('/api/analytics/agents/list', { params }),
+
+    // ── Overview metrics ──
+    getAgentOverviewMetrics: () =>
+        analyticsClient.get('/api/analytics/agents/overview-metrics'),
+
+    getUserFunnelMetrics: () =>
+        analyticsClient.get('/api/analytics/users/funnel-metrics'),
 };

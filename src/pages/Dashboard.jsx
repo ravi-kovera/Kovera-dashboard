@@ -22,6 +22,10 @@ import {
     CalendarDays,
     RefreshCw,
     Activity,
+    Home,
+    MapPin,
+    Camera,
+    Briefcase,
 } from 'lucide-react';
 import {
     useDashboardSummary,
@@ -32,6 +36,8 @@ import {
     useImpressions,
     useSwipeRates,
     useListingsOverview,
+    useAgentOverviewMetrics,
+    useUserFunnelMetrics,
 } from '@/services/hooks/useAnalytics';
 import {
     AreaChart,
@@ -165,6 +171,8 @@ export default function Dashboard() {
     const activityQ = useUserActivity(dateRange);
     const swipeQ = useSwipeRates(dateRange);
     const listingsQ = useListingsOverview();
+    const agentMetricsQ = useAgentOverviewMetrics();
+    const userFunnelQ = useUserFunnelMetrics();
 
     const dash = dashQ.data ?? null;
     const signups = signupsQ.data ?? null;
@@ -173,6 +181,8 @@ export default function Dashboard() {
     const activity = activityQ.data ?? null;
     const swipe = swipeQ.data ?? null;
     const listings = listingsQ.data ?? null;
+    const agentMetrics = agentMetricsQ.data ?? null;
+    const userFunnel = userFunnelQ.data ?? null;
 
     const isLoading = dashQ.isLoading;
 
@@ -322,6 +332,8 @@ export default function Dashboard() {
         activityQ.refetch();
         swipeQ.refetch();
         listingsQ.refetch();
+        agentMetricsQ.refetch();
+        userFunnelQ.refetch();
     };
 
     return (
@@ -360,6 +372,243 @@ export default function Dashboard() {
                     : kpiCards?.map((kpi) => (
                           <StatCard key={kpi.key} {...kpi} />
                       ))}
+            </div>
+
+            {/* ══════════════════════════════════════════
+          OVERVIEW METRICS: Agent Depth + User Funnel
+          ══════════════════════════════════════════ */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* ── Agent Overview Metrics ── */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <UserCog className="w-4 h-4 text-purple-400" />
+                            Agent Depth
+                            {agentMetrics && (
+                                <span className="ml-auto text-xs font-normal text-muted">
+                                    {agentMetrics.totalAgents} agents total
+                                </span>
+                            )}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-5">
+                        {agentMetricsQ.isLoading ? (
+                            <div className="space-y-3">
+                                {[1, 2].map((i) => (
+                                    <div key={i} className="space-y-2">
+                                        <Skeleton className="h-4 w-40 rounded" />
+                                        <Skeleton className="h-2 w-full rounded-full" />
+                                        <Skeleton className="h-3 w-48 rounded" />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : !agentMetrics ? (
+                            <EmptyState
+                                variant={agentMetricsQ.isError ? 'error' : 'empty'}
+                                onRetry={agentMetricsQ.refetch}
+                            />
+                        ) : (
+                            <>
+                                {/* Client penetration */}
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <Briefcase className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                                        <span className="text-sm font-medium text-white">
+                                            Client Penetration
+                                        </span>
+                                        <span className="ml-auto text-lg font-bold text-blue-400">
+                                            {agentMetrics.pctAgentsWithClients}%
+                                        </span>
+                                    </div>
+                                    <div className="w-full h-2 bg-navy-800 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full rounded-full bg-blue-500 transition-all duration-700"
+                                            style={{ width: `${agentMetrics.pctAgentsWithClients}%` }}
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-4 text-xs text-muted">
+                                        <span>
+                                            <span className="text-white font-medium">
+                                                {agentMetrics.agentsWithClients}
+                                            </span>{' '}
+                                            / {agentMetrics.totalAgents} agents have clients
+                                        </span>
+                                        <span className="ml-auto">
+                                            avg{' '}
+                                            <span className="text-white font-medium">
+                                                {agentMetrics.avgClientsPerAgent}
+                                            </span>{' '}
+                                            clients / agent
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-border" />
+
+                                {/* Pocket listings */}
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <Home className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                        <span className="text-sm font-medium text-white">
+                                            Pocket / Off-Market Listings
+                                        </span>
+                                        <span className="ml-auto text-lg font-bold text-emerald-400">
+                                            {agentMetrics.pctAgentsWithPocket}%
+                                        </span>
+                                    </div>
+                                    <div className="w-full h-2 bg-navy-800 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full rounded-full bg-emerald-500 transition-all duration-700"
+                                            style={{ width: `${agentMetrics.pctAgentsWithPocket}%` }}
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-4 text-xs text-muted">
+                                        <span>
+                                            <span className="text-white font-medium">
+                                                {agentMetrics.agentsWithPocket}
+                                            </span>{' '}
+                                            / {agentMetrics.totalAgents} agents have pocket listings
+                                        </span>
+                                        <span className="ml-auto">
+                                            <span className="text-white font-medium">
+                                                {agentMetrics.totalPocketListings}
+                                            </span>{' '}
+                                            total · avg{' '}
+                                            <span className="text-white font-medium">
+                                                {agentMetrics.avgPocketPerAgent}
+                                            </span>{' '}
+                                            / agent
+                                        </span>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* ── User Funnel Metrics ── */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Users className="w-4 h-4 text-blue-400" />
+                            User Quality Funnel
+                            {userFunnel && (
+                                <span className="ml-auto text-xs font-normal text-muted">
+                                    {fmtNum(userFunnel.totalUsers)} users total
+                                </span>
+                            )}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-5">
+                        {userFunnelQ.isLoading ? (
+                            <div className="space-y-3">
+                                {[1, 2, 3].map((i) => (
+                                    <div key={i} className="space-y-2">
+                                        <Skeleton className="h-4 w-40 rounded" />
+                                        <Skeleton className="h-2 w-full rounded-full" />
+                                        <Skeleton className="h-3 w-48 rounded" />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : !userFunnel ? (
+                            <EmptyState
+                                variant={userFunnelQ.isError ? 'error' : 'empty'}
+                                onRetry={userFunnelQ.refetch}
+                            />
+                        ) : (
+                            <>
+                                {/* Address coverage */}
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                        <span className="text-sm font-medium text-white">
+                                            Valid Address on File
+                                        </span>
+                                        <span className="ml-auto text-lg font-bold text-amber-400">
+                                            {userFunnel.pctUsersWithAddress}%
+                                        </span>
+                                    </div>
+                                    <div className="w-full h-2 bg-navy-800 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full rounded-full bg-amber-500 transition-all duration-700"
+                                            style={{ width: `${userFunnel.pctUsersWithAddress}%` }}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-muted">
+                                        <span className="text-white font-medium">
+                                            {fmtNum(userFunnel.usersWithAddress)}
+                                        </span>{' '}
+                                        of {fmtNum(userFunnel.totalUsers)} users
+                                    </p>
+                                </div>
+
+                                <div className="border-t border-border" />
+
+                                {/* Sellers / Landlords */}
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <Home className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                                        <span className="text-sm font-medium text-white">
+                                            Sellers / Landlords
+                                            <span className="text-muted font-normal text-xs ml-1">
+                                                (of addressed users)
+                                            </span>
+                                        </span>
+                                        <span className="ml-auto text-lg font-bold text-purple-400">
+                                            {userFunnel.pctSellersLandlordsOfAddressUsers}%
+                                        </span>
+                                    </div>
+                                    <div className="w-full h-2 bg-navy-800 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full rounded-full bg-purple-500 transition-all duration-700"
+                                            style={{
+                                                width: `${userFunnel.pctSellersLandlordsOfAddressUsers}%`,
+                                            }}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-muted">
+                                        <span className="text-white font-medium">
+                                            {fmtNum(userFunnel.sellersLandlordsWithAddress)}
+                                        </span>{' '}
+                                        of {fmtNum(userFunnel.usersWithAddress)} addressed users
+                                    </p>
+                                </div>
+
+                                <div className="border-t border-border" />
+
+                                {/* With photos */}
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <Camera className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                                        <span className="text-sm font-medium text-white">
+                                            Sellers / Landlords with Photos
+                                            <span className="text-muted font-normal text-xs ml-1">
+                                                (of above)
+                                            </span>
+                                        </span>
+                                        <span className="ml-auto text-lg font-bold text-rose-400">
+                                            {userFunnel.pctSellersLandlordsWithPhotos}%
+                                        </span>
+                                    </div>
+                                    <div className="w-full h-2 bg-navy-800 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full rounded-full bg-rose-500 transition-all duration-700"
+                                            style={{
+                                                width: `${userFunnel.pctSellersLandlordsWithPhotos}%`,
+                                            }}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-muted">
+                                        <span className="text-white font-medium">
+                                            {fmtNum(userFunnel.sellersLandlordsWithPhotos)}
+                                        </span>{' '}
+                                        of {fmtNum(userFunnel.sellersLandlordsWithAddress)} sellers/landlords
+                                    </p>
+                                </div>
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
 
             {/* ══════════════════════════════════════════

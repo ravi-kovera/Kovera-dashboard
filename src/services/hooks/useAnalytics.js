@@ -405,3 +405,27 @@ export function useAgentsList({ page = 1, limit = 20, search = '' } = {}) {
         keepPreviousData: true,
     });
 }
+
+// ═══════════════════════════════════════════════
+//  Overview metrics
+// ═══════════════════════════════════════════════
+
+export function useAgentOverviewMetrics() {
+    return useQuery({
+        queryKey: ['analytics', 'agent-overview-metrics'],
+        queryFn: () => analyticsAPI.getAgentOverviewMetrics().then((r) => r.data),
+        staleTime: 60_000,
+        refetchInterval: 60_000,
+        refetchIntervalInBackground: false,
+    });
+}
+
+export function useUserFunnelMetrics() {
+    return useQuery({
+        queryKey: ['analytics', 'user-funnel-metrics'],
+        queryFn: () => analyticsAPI.getUserFunnelMetrics().then((r) => r.data),
+        staleTime: 60_000,
+        refetchInterval: 60_000,
+        refetchIntervalInBackground: false,
+    });
+}

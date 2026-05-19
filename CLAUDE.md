@@ -243,9 +243,23 @@ Three axios instances live in `src/services/api/`:
 | Var | Purpose | Required? |
 |---|---|---|
 | `VITE_ANALYTICS_BASE_URL` | Origin for `api` and `analyticsClient` (analytics + legacy users/agents/properties endpoints). Empty string = same-origin. | Yes for non-local |
-| `VITE_MS_AUTH_BASE_URL`   | Origin for the ms-auth `authClient` (the helpers prepend `/api/v1/auth/...`). Empty string = same-origin. | Yes for non-local |
+| `VITE_MS_AUTH_BASE_URL`   | Origin for the ms-auth `authClient` (the helpers prepend `/api/v1/auth/...`). Empty string = same-origin (use empty on Vercel — the `/ms-auth/*` proxy rewrite handles routing to the actual server). | Yes for non-local dev |
 
 Add new vars to `.env` / `.env.local` (gitignored), document them here in the same commit. They **must** be `VITE_`-prefixed to be readable from the browser.
+
+### Vercel proxy for ms-auth (mixed-content fix)
+
+The ms-auth server runs on plain HTTP. Vercel serves the dashboard over HTTPS, so browsers block direct `http://` calls (mixed-content). The workaround is a Vercel rewrite in [vercel.json](vercel.json):
+
+```json
+{ "source": "/ms-auth/:path*", "destination": "http://18.119.38.181:3002/:path*" }
+```
+
+This means:
+- **On Vercel (production):** set `VITE_MS_AUTH_BASE_URL=` (empty string). `authClient` uses same-origin; Vercel proxies `/ms-auth/*` → `http://18.119.38.181:3002/*` server-side, bypassing the browser mixed-content restriction.
+- **Locally:** keep `VITE_MS_AUTH_BASE_URL=http://18.119.38.181:3002` in `.env.local`. The browser is on HTTP (`localhost:5173`) so there is no mixed-content block, and the Vite dev server doesn't apply vercel.json rewrites.
+
+**Important:** `authClient` base URL is `VITE_MS_AUTH_BASE_URL`. The `authAPI` methods use paths like `/api/v1/auth/otp-login/start`. When `VITE_MS_AUTH_BASE_URL` is empty, those resolve against the Vercel origin, and the `/ms-auth/*` rewrite does **not** intercept them — so also update the auth paths to be prefixed with `/ms-auth` on Vercel, OR keep `VITE_MS_AUTH_BASE_URL` pointing to the proxy prefix. The cleanest approach: set `VITE_MS_AUTH_BASE_URL=/ms-auth` in Vercel's env vars so `authClient` resolves to `https://your-app.vercel.app/ms-auth/api/v1/auth/...` → proxied correctly.
 
 ## Anti-patterns (don't)
 
