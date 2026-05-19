@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios from 'axios';
 
 /**
  * Kovera Analytics API
@@ -15,107 +15,116 @@ import axios from "axios";
  */
 
 const analyticsClient = axios.create({
-  baseURL: import.meta.env.VITE_ANALYTICS_BASE_URL || "",
-  timeout: 30_000,
+    baseURL: import.meta.env.VITE_ANALYTICS_BASE_URL || '',
+    timeout: 30_000,
 });
 
 // ===== Dashboard =====
 export const analyticsAPI = {
-  getDashboard: (params) =>
-    analyticsClient.get("/api/analytics/dashboard", { params }),
+    getDashboard: (params) =>
+        analyticsClient.get('/api/analytics/dashboard', { params }),
 
-  // ── Users ──
-  getUserSignups: (params) =>
-    analyticsClient.get("/api/analytics/users/signups", { params }),
+    // ── Users ──
+    getUserSignups: (params) =>
+        analyticsClient.get('/api/analytics/users/signups', { params }),
 
-  getOnboardingFunnel: () =>
-    analyticsClient.get("/api/analytics/users/onboarding-funnel"),
+    getOnboardingFunnel: () =>
+        analyticsClient.get('/api/analytics/users/onboarding-funnel'),
 
-  getRolesDistribution: () =>
-    analyticsClient.get("/api/analytics/users/roles"),
+    getRolesDistribution: () =>
+        analyticsClient.get('/api/analytics/users/roles'),
 
-  getUserActivity: (params) =>
-    analyticsClient.get("/api/analytics/users/activity", { params }),
+    getUserActivity: (params) =>
+        analyticsClient.get('/api/analytics/users/activity', { params }),
 
-  // ── Engagement ──
-  getImpressions: (params) =>
-    analyticsClient.get("/api/analytics/engagement/impressions", { params }),
+    // ── Engagement ──
+    getImpressions: (params) =>
+        analyticsClient.get('/api/analytics/engagement/impressions', {
+            params,
+        }),
 
-  getSwipeRates: (params) =>
-    analyticsClient.get("/api/analytics/engagement/swipe-rates", { params }),
+    getSwipeRates: (params) =>
+        analyticsClient.get('/api/analytics/engagement/swipe-rates', {
+            params,
+        }),
 
-  getFeedDepth: () =>
-    analyticsClient.get("/api/analytics/engagement/feed-depth"),
+    getFeedDepth: () =>
+        analyticsClient.get('/api/analytics/engagement/feed-depth'),
 
-  getDreamBoard: () =>
-    analyticsClient.get("/api/analytics/engagement/dream-board"),
+    getDreamBoard: () =>
+        analyticsClient.get('/api/analytics/engagement/dream-board'),
 
-  getPreviewConversion: (params) =>
-    analyticsClient.get("/api/analytics/engagement/preview-conversion", { params }),
+    getPreviewConversion: (params) =>
+        analyticsClient.get('/api/analytics/engagement/preview-conversion', {
+            params,
+        }),
 
-  // ── Agents ──
-  getAgentRegistrations: (params) =>
-    analyticsClient.get("/api/analytics/agents/registrations", { params }),
+    // ── Agents ──
+    getAgentRegistrations: (params) =>
+        analyticsClient.get('/api/analytics/agents/registrations', { params }),
 
-  getAgentsByBrokerage: () =>
-    analyticsClient.get("/api/analytics/agents/brokerages"),
+    getAgentsByBrokerage: () =>
+        analyticsClient.get('/api/analytics/agents/brokerages'),
 
-  getClientRatio: () =>
-    analyticsClient.get("/api/analytics/agents/client-ratio"),
+    getClientRatio: () =>
+        analyticsClient.get('/api/analytics/agents/client-ratio'),
 
-  getLicenseCoverage: () =>
-    analyticsClient.get("/api/analytics/agents/license-coverage"),
+    getLicenseCoverage: () =>
+        analyticsClient.get('/api/analytics/agents/license-coverage'),
 
-  getClientStatus: () =>
-    analyticsClient.get("/api/analytics/agents/client-status"),
+    getClientStatus: () =>
+        analyticsClient.get('/api/analytics/agents/client-status'),
 
-  // ── Chains ──
-  getChainStatus: (params) =>
-    analyticsClient.get("/api/analytics/chains/status", { params }),
+    // ── Chains ──
+    getChainStatus: (params) =>
+        analyticsClient.get('/api/analytics/chains/status', { params }),
 
-  getChainTypes: () =>
-    analyticsClient.get("/api/analytics/chains/types"),
+    getChainTypes: () => analyticsClient.get('/api/analytics/chains/types'),
 
-  getChainSize: () =>
-    analyticsClient.get("/api/analytics/chains/size"),
+    getChainSize: () => analyticsClient.get('/api/analytics/chains/size'),
 
-  // ── Referrals ──
-  getReferralVolume: (params) =>
-    analyticsClient.get("/api/analytics/referrals/volume", { params }),
+    // ── Referrals ──
+    getReferralVolume: (params) =>
+        analyticsClient.get('/api/analytics/referrals/volume', { params }),
 
-  getReferralConversion: () =>
-    analyticsClient.get("/api/analytics/referrals/conversion"),
+    getReferralConversion: () =>
+        analyticsClient.get('/api/analytics/referrals/conversion'),
 
-  getReferralLeaderboard: (params) =>
-    analyticsClient.get("/api/analytics/referrals/leaderboard", { params }),
+    getReferralLeaderboard: (params) =>
+        analyticsClient.get('/api/analytics/referrals/leaderboard', { params }),
 
-  // ── Listings ──
-  getListingsOverview: () =>
-    analyticsClient.get("/api/analytics/listings/overview"),
+    // ── Listings ──
+    getListingsOverview: () =>
+        analyticsClient.get('/api/analytics/listings/overview'),
 
-  // ── Network / Chain Management ──
-  getNetworkChains: (params) =>
-    analyticsClient.get("/api/analytics/network/chains", { params }),
+    // ── Network / Chain Management ──
+    getNetworkChains: (params) =>
+        analyticsClient.get('/api/analytics/network/chains', { params }),
 
-  getAgentRequests: () =>
-    analyticsClient.get("/api/analytics/agent-requests"),
+    getAgentRequests: () =>
+        analyticsClient.get('/api/analytics/agent-requests'),
 
-  sendAgentInvite: (id) =>
-    analyticsClient.post(`/api/analytics/agent-requests/${id}/invite`),
+    sendAgentInvite: (id) =>
+        analyticsClient.post(`/api/analytics/agent-requests/${id}/invite`),
 
-  approveAgentRequest: (id) =>
-    analyticsClient.post(`/api/analytics/agent-requests/${id}/approve`),
+    approveAgentRequest: (id) =>
+        analyticsClient.post(`/api/analytics/agent-requests/${id}/approve`),
 
-  rejectAgentRequest: (id) =>
-    analyticsClient.post(`/api/analytics/agent-requests/${id}/reject`),
+    rejectAgentRequest: (id) =>
+        analyticsClient.post(`/api/analytics/agent-requests/${id}/reject`),
 
-  assignAgent: (data) =>
-    analyticsClient.post("/api/analytics/agent-requests/assign", data),
+    assignAgent: (data) =>
+        analyticsClient.post('/api/analytics/agent-requests/assign', data),
 
-  // ── Map coordinates ──
-  getListingsMap: () =>
-    analyticsClient.get("/api/analytics/listings/map"),
+    // ── Map coordinates ──
+    getListingsMap: () => analyticsClient.get('/api/analytics/listings/map'),
 
-  getChainsMap: () =>
-    analyticsClient.get("/api/analytics/chains/map"),
+    getChainsMap: () => analyticsClient.get('/api/analytics/chains/map'),
+
+    // ── Admin paginated lists ──
+    getUsersList: (params) =>
+        analyticsClient.get('/api/analytics/users/list', { params }),
+
+    getAgentsList: (params) =>
+        analyticsClient.get('/api/analytics/agents/list', { params }),
 };

@@ -7,8 +7,8 @@
 const isDev = import.meta.env.DEV;
 
 export const logger = {
-  warn:  (...args) => isDev && console.warn("[Kovera]", ...args),
-  info:  (...args) => isDev && console.info("[Kovera]", ...args),
-  error: (...args) => isDev && console.error("[Kovera]", ...args),
-  debug: (...args) => isDev && console.debug("[Kovera]", ...args),
+    warn: (...args) => isDev && console.warn('[Kovera]', ...args),
+    info: (...args) => isDev && console.info('[Kovera]', ...args),
+    error: (...args) => isDev && console.error('[Kovera]', ...args),
+    debug: (...args) => isDev && console.debug('[Kovera]', ...args),
 };
