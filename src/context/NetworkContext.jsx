@@ -38,7 +38,7 @@ export function NetworkProvider({ children }) {
         localStorage.getItem('kovera_privacy_mode') || 'private'
     );
     const [netSidebarOpen, setNetSidebarOpen] = useState(
-        localStorage.getItem('kovera_sidebar_open') === 'true'
+        localStorage.getItem('kovera_sidebar_open') !== 'false'
     );
     const [detailsOpen, setDetailsOpen] = useState(
         localStorage.getItem('kovera_details_open') === 'true'
