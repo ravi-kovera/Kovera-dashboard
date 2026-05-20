@@ -23,6 +23,7 @@ Kovera admin dashboard frontend. React 19 + Vite + Tailwind v4, TanStack Query +
 - **HTTP client:** Axios (two instances — see [Network layer](#network-layer))
 - **Charts:** Recharts
 - **Maps:** Leaflet + React-Leaflet
+- **Animation:** `motion/react` (Motion for React v12) — used in Network Map panel animations only
 - **Icons:** Lucide React
 - **Variant utilities:** `class-variance-authority` + `clsx` + `tailwind-merge` (via the `cn()` helper)
 - **Linter / Formatter:** ESLint 9 (flat config) + Prettier (config in [.prettierrc](.prettierrc) — single quotes, 4-space indent, trailing commas)
@@ -65,15 +66,26 @@ src/
     layout/                  # Chrome that frames every authenticated page
       DashboardLayout.jsx Header.jsx Sidebar.jsx
       index.js
+  components/
+    network/                 # Network Map components — used only in NetworkMap page
+      NetworkCanvas.jsx      # Leaflet map renderer (nodes, edges, chain polylines)
+      NetworkSidebar.jsx     # Slide-in panel: node filters, chain list, actions
+      NetworkDetailPanel.jsx # Slide-in panel: selected node detail
+      NetworkLegend.jsx      # Absolute-positioned map legend
+      ChainList.jsx          # Chain items list within NetworkSidebar
+      index.js               # Barrel export
   context/                   # React Context providers — one file per context
     AuthContext.jsx          # session user + login/logout + idle/expiry timers
     ThemeContext.jsx         # dark/light toggle, persisted
     SidebarContext.jsx       # collapse/expand on desktop, open/close on mobile
+    ViewModeContext.jsx      # 'analytics' | 'network' toggle — mounted in DashboardLayout
+    NetworkContext.jsx       # network graph state (nodes, edges, chains, filters) — mounted in DashboardLayout
   pages/                     # Route-level screens. One file per top-level route.
     Login.jsx Dashboard.jsx Search.jsx Users.jsx Agents.jsx
     Properties.jsx Trades.jsx Settings.jsx
     Engagement.jsx Chains.jsx Referrals.jsx
     AgentAnalytics.jsx ChainManagement.jsx
+    NetworkMap.jsx           # Full-screen network graph view (shown when mode = 'network')
     ComponentShowcase.jsx    # internal — visual catalogue of UI primitives
   routes/
     index.jsx                # Centralised route table. Add new routes HERE.
@@ -89,6 +101,7 @@ src/
     utils.js                 # cn() — twMerge(clsx(...)) — the only place to compose Tailwind classes
     tokenStore.js            # sessionStorage-backed JWT store (sole readers: axios interceptors)
     logger.js                # dev-only console wrapper — use INSTEAD of bare console.*
+    chainPaths.js            # Network graph utilities: ID resolvers, chain normalizers, agent map builder
 public/                      # Static files copied verbatim to /
 index.html                   # Vite entry HTML
 vite.config.js               # plugins + @ alias
@@ -97,6 +110,8 @@ vercel.json                  # SPA rewrite rules for client-side routing
 ```
 
 **Structural rules** (enforce these — they shape every change):
+
+0. **Analytics / Network mode toggle.** The Header renders a two-button segmented toggle (`Analytics | Network`) backed by `ViewModeContext`. When `mode === 'analytics'`, `DashboardLayout` renders the normal `<Sidebar>` + `<Outlet>` (all existing routes). When `mode === 'network'`, `DashboardLayout` renders `<NetworkMap>` full-width (the dashboard sidebar is hidden; the network view has its own `NetworkSidebar`). `ViewModeProvider` and `NetworkProvider` are both mounted inside `DashboardLayout` — **not** in `App.jsx`.
 
 1. **Three-bucket component split.** `components/ui/` holds generic primitives (no domain awareness — a `<Button>` doesn't know about Users); `components/common/` holds app-specific shared widgets (`StatCard`, `DataTable`); `components/layout/` holds the page frame (`Sidebar`, `Header`, `DashboardLayout`). If a component is used by exactly one page, keep it co-located in or beside that page file — don't promote to `common/` until a second caller appears.
 2. **Pages are the only thing that hits hooks + API directly.** Components in `ui/`/`common/`/`layout/` receive data via props. Don't call `useUsers()` from inside a `<DataTable>`; let the page own the query and pass the result down.

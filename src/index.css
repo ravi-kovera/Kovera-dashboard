@@ -60,6 +60,9 @@
     --font-sans:
         'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
         sans-serif;
+    --font-mono:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        'Liberation Mono', 'Courier New', monospace;
 }
 
 /* ===== Dark Mode (class strategy) ===== */
@@ -362,6 +365,49 @@
 /* ===== Responsive Utilities ===== */
 @utility safe-area-bottom {
     padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ===== Network Map Tokens ===== */
+@theme {
+    --color-net-bg: #0B1120;
+    --color-net-bg2: #0F1729;
+    --color-net-card: #131D32;
+    --color-net-border: rgba(34, 201, 138, 0.08);
+    --color-net-border2: rgba(255, 255, 255, 0.06);
+    --color-net-text: #F0F2F7;
+    --color-net-text2: #8B96B8;
+    --color-net-text3: #4D5A7C;
+    --color-kovera-net: #22C98A;
+    --color-kovera-net-light: #34D399;
+    --color-kovera-net-glow: rgba(34, 201, 138, 0.15);
+    --color-blue-node: #378ADD;
+    --color-pink-node: #D4537E;
+    --color-amber-node: #F59E0B;
+    --color-purple-node: #8B5CF6;
+}
+
+@utility kovera-net-card {
+    background: var(--color-net-card);
+    border: 1px solid var(--color-net-border2);
+    border-radius: 1rem;
+}
+
+@utility kovera-btn-net {
+    background: linear-gradient(135deg, #22C98A, #10B981);
+    color: white;
+    font-weight: 600;
+    border-radius: 0.75rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+}
+
+@utility kovera-btn-outline-net {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #8B96B8;
+    border-radius: 0.75rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
 }
 
 @utility hide-scrollbar {

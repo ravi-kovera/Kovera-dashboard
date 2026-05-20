@@ -134,4 +134,37 @@ export const analyticsAPI = {
 
     getUserFunnelMetrics: () =>
         analyticsClient.get('/api/analytics/users/funnel-metrics'),
+
+    // ── Network Map ──
+    getNetworkGraph: (excludeInternal = true, refresh = false, chainFilter = 0) =>
+        analyticsClient.get('/api/analytics/network/graph', {
+            params: { excludeInternal, refresh, chainFilter },
+        }),
+
+    getNetworkStats: () =>
+        analyticsClient.get('/api/analytics/network/stats'),
+
+    getNetworkChainsData: (minLength = 2) =>
+        analyticsClient.get('/api/analytics/network/chains', { params: { minLength } }),
+
+    getNetworkClusters: (minSize = 3) =>
+        analyticsClient.get('/api/analytics/network/clusters', { params: { minSize } }),
+
+    getAddressCycles: () =>
+        analyticsClient.get('/api/analytics/network/address-cycles'),
+
+    getNodeDetail: (nodeId) =>
+        analyticsClient.get(`/api/analytics/network/node/${nodeId}`),
+
+    exportNetworkMd: () =>
+        analyticsClient.get('/api/analytics/network/export', { responseType: 'blob' }),
+
+    getNetworkInternalUsers: () =>
+        analyticsClient.get('/api/analytics/network/internal-users'),
+
+    updateNetworkInternalUsers: (internalUserIds) =>
+        analyticsClient.put('/api/analytics/network/internal-users', { internalUserIds }),
+
+    refreshNetworkGeocode: () =>
+        analyticsClient.post('/api/analytics/network/refresh'),
 };

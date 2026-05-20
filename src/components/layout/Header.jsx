@@ -1,9 +1,10 @@
-import { Bell, User, Menu } from 'lucide-react';
+import { Bell, User, Menu, BarChart2, Network } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useSidebar } from '@/context/SidebarContext';
 import { useAuth } from '@/context/AuthContext';
+import { useViewMode } from '@/context/ViewModeContext';
+import { cn } from '@/lib/utils';
 
-// Derive 1–2 character initials for the avatar from displayName or email.
 function initialsFor(user) {
     if (!user) return null;
     const source = user.displayName?.trim() || user.email || '';
@@ -15,7 +16,6 @@ function initialsFor(user) {
         .join('');
 }
 
-/* ── Breadcrumb label map ── */
 const pageTitles = {
     dashboard: 'Dashboard',
     search: 'Search',
@@ -29,20 +29,18 @@ const pageTitles = {
 export function Header() {
     const { toggle } = useSidebar();
     const { user } = useAuth();
+    const { mode, setMode } = useViewMode();
     const location = useLocation();
     const initials = initialsFor(user);
     const displayName = user?.displayName || user?.email?.split('@')[0] || '—';
 
-    // Derive current page name from path
-    const segment =
-        location.pathname.split('/').filter(Boolean)[0] || 'dashboard';
-    const pageTitle = pageTitles[segment] || 'Dashboard';
+    const segment = location.pathname.split('/').filter(Boolean)[0] || 'dashboard';
+    const pageTitle = mode === 'network' ? 'Network' : (pageTitles[segment] || 'Dashboard');
 
     return (
         <header className="sticky top-0 z-30 h-16 bg-navy-900/80 backdrop-blur-xl border-b border-border flex items-center justify-between px-6 gap-4">
             {/* Left — Mobile toggle + Breadcrumb */}
             <div className="flex items-center gap-4">
-                {/* Mobile hamburger (visible only on small screens or when sidebar collapsed) */}
                 <button
                     onClick={toggle}
                     className="p-2 rounded-xl text-muted hover:text-white hover:bg-surface-hover transition-colors cursor-pointer lg:hidden"
@@ -50,7 +48,6 @@ export function Header() {
                     <Menu className="w-5 h-5" />
                 </button>
 
-                {/* Breadcrumb */}
                 <div className="hidden sm:flex items-center gap-2 text-sm">
                     <span className="text-muted-foreground">Kovera</span>
                     <span className="text-muted-foreground/40">/</span>
@@ -58,30 +55,59 @@ export function Header() {
                 </div>
             </div>
 
+            {/* Centre — Mode Toggle */}
+            <div
+                className="flex items-center gap-0.5 p-1 rounded-xl"
+                style={{ background: 'rgba(30,41,59,0.8)', border: '1px solid rgba(51,65,85,0.5)' }}
+            >
+                <button
+                    onClick={() => setMode('analytics')}
+                    className={cn(
+                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+                        mode === 'analytics'
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'text-muted hover:text-white'
+                    )}
+                >
+                    <BarChart2 className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Analytics</span>
+                </button>
+                <button
+                    onClick={() => setMode('network')}
+                    className={cn(
+                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+                        mode === 'network'
+                            ? 'text-white shadow-sm'
+                            : 'text-muted hover:text-white'
+                    )}
+                    style={
+                        mode === 'network'
+                            ? { background: '#22C98A' }
+                            : {}
+                    }
+                >
+                    <Network className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Network</span>
+                </button>
+            </div>
+
             {/* Right — Actions */}
             <div className="flex items-center gap-2">
-                {/* Notification Bell */}
                 <button className="relative p-2 rounded-xl text-muted hover:text-white hover:bg-surface-hover transition-colors cursor-pointer">
                     <Bell className="w-5 h-5" />
                     <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full animate-pulse-slow" />
                 </button>
 
-                {/* Divider */}
                 <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
 
-                {/* User Avatar */}
                 <button className="flex items-center gap-3 px-3 py-1.5 rounded-xl hover:bg-surface-hover transition-colors cursor-pointer">
                     <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center text-white text-xs font-semibold">
                         {initials || <User className="w-4 h-4" />}
                     </div>
                     <div className="text-left hidden md:block">
-                        <p className="text-sm font-medium text-white leading-tight">
-                            {displayName}
-                        </p>
+                        <p className="text-sm font-medium text-white leading-tight">{displayName}</p>
                         {user?.email && (
-                            <p className="text-xs text-muted leading-tight">
-                                {user.email}
-                            </p>
+                            <p className="text-xs text-muted leading-tight">{user.email}</p>
                         )}
                     </div>
                 </button>
