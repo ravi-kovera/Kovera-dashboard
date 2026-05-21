@@ -25,8 +25,20 @@ const BORDER  = 2.5;   // hollow ring border width
 
 function makeIcon(node, isActive, isSelected, isGreyed) {
     const color  = isGreyed ? '#4D5A7C' : nodeColor(node);
-    const active = isActive && !isGreyed; // greyed nodes are always hollow
+    const active = isActive && !isGreyed;
     const sz     = isSelected ? SEL_SIZE : DOT_SIZE;
+
+    // Cluster pin — solid circle with count badge
+    if (node._isCluster) {
+        const bg = isGreyed ? '#4D5A7C' : color;
+        const d  = isSelected ? SEL_SIZE + 4 : DOT_SIZE + 4;
+        return L.divIcon({
+            className: '',
+            html: `<div style="width:${d}px;height:${d}px;background:${bg};border-radius:9999px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:2px solid rgba(255,255,255,0.3);"><span style="color:#000;font-size:${Math.round(d * 0.48)}px;font-weight:900;line-height:1;">${node._clusterCount}</span></div>`,
+            iconSize: [d, d],
+            iconAnchor: [d / 2, d / 2],
+        });
+    }
     const isMonetizable = isUserLikeNode(node) && node.hasAgent === false;
 
     if (isDreamAnchor(node)) {
@@ -80,36 +92,36 @@ function FitBounds({ points, maxZoom }) {
     return null;
 }
 
-// ── Coordinate spread ────────────────────────────────────────────────
-// Nodes sharing a sharedAddressGroup have the same real-world address —
-// use the first node's position as canonical so they cluster together.
-function spreadNodesByCoord(nodes) {
+// ── Coordinate clustering ─────────────────────────────────────────────
+// Nodes within the same 3dp lat/lng cell (~111 m) are merged into one
+// cluster pin. Single-node groups pass through unchanged.
+function coordKey(lat, lng) {
+    return `${Math.round(Number(lat) * 1000)}:${Math.round(Number(lng) * 1000)}`;
+}
+
+function clusterNodesByCoord(nodes) {
     const grouped = new Map();
     nodes.forEach((node) => {
-        const key = node.sharedAddressGroup
-            ? `addr:${node.sharedAddressGroup}`
-            : `ll:${Number(node.lat).toFixed(5)}:${Number(node.lng).toFixed(5)}`;
+        const key = coordKey(node.lat, node.lng);
         const list = grouped.get(key) || [];
         list.push(node);
         grouped.set(key, list);
     });
-    const spread = [];
+    const result = [];
     grouped.forEach((list) => {
-        if (list.length === 1) { spread.push(list[0]); return; }
-        // Use first node's coordinates as the canonical position for the group
-        const baseLat = Number(list[0].lat);
-        const baseLng = Number(list[0].lng);
-        list.forEach((node, i) => {
-            const angle  = (Math.PI * 2 * i) / list.length;
-            const radius = 0.00022 + Math.floor(i / 12) * 0.0001;
-            spread.push({
-                ...node,
-                renderLat: baseLat + Math.sin(angle) * radius,
-                renderLng: baseLng + Math.cos(angle) * radius,
-            });
+        if (list.length === 1) { result.push(list[0]); return; }
+        const first = list[0];
+        result.push({
+            ...first,
+            id: `cluster__${list.map((n) => n.id).join('__')}`,
+            lat: Number(first.lat),
+            lng: Number(first.lng),
+            _isCluster: true,
+            _clusterNodes: list,
+            _clusterCount: list.length,
         });
     });
-    return spread;
+    return result;
 }
 
 const percentile = (arr, p) => {
@@ -124,6 +136,13 @@ export default function NetworkCanvas() {
         useNetworkContext();
     const showTiles = privacyMode === 'private';
 
+    const maskValue = (value) => {
+        if (privacyMode === 'public' && value && String(value).length > 3) {
+            return String(value).slice(0, 2) + '••••';
+        }
+        return value;
+    };
+
     // All nodes with valid coordinates, pure-buyers excluded from display
     const renderNodes = useMemo(() => {
         const nodes = Array.isArray(graphData?.nodes) ? graphData.nodes : [];
@@ -137,15 +156,19 @@ export default function NetworkCanvas() {
         );
     }, [graphData]);
 
-    const adjustedNodes = useMemo(() => spreadNodesByCoord(renderNodes), [renderNodes]);
+    const adjustedNodes = useMemo(() => clusterNodesByCoord(renderNodes), [renderNodes]);
 
     // All nodes are always rendered; non-matching ones are greyed out rather than hidden.
     const visibleNodes = adjustedNodes;
 
-    // id → node map (spread positions)
+    // id → node map. For clusters, also map every constituent id so edge
+    // lookups resolve to the cluster's map position.
     const nodeMap = useMemo(() => {
         const m = new Map();
-        adjustedNodes.forEach((n) => m.set(String(n.id), n));
+        adjustedNodes.forEach((n) => {
+            m.set(String(n.id), n);
+            if (n._isCluster) n._clusterNodes.forEach((cn) => m.set(String(cn.id), n));
+        });
         return m;
     }, [adjustedNodes]);
 
@@ -183,46 +206,54 @@ export default function NetworkCanvas() {
         return s;
     }, [graphData]);
 
+    // IDs of the selected node (or all constituent IDs if it's a cluster)
+    const selectedIds = useMemo(() => {
+        if (!selectedNode) return new Set();
+        if (selectedNode._isCluster) return new Set(selectedNode._clusterNodes.map((n) => String(n.id)));
+        return new Set([String(selectedNode.id)]);
+    }, [selectedNode]);
+
     // Active node IDs — determines State 1 vs State 2/3
     const activeNodeIds = useMemo(() => {
         const ids = new Set();
         if (activeChain) {
-            // Chain mode: only chain path nodes are active
             chainNodeIds.forEach((id) => ids.add(id));
             return ids;
         }
         if (selectedNode) {
-            // Node selection: selected + directly connected
+            // Mark the cluster/node itself active
             ids.add(String(selectedNode.id));
             const edges = Array.isArray(graphData?.edges) ? graphData.edges : [];
             edges.forEach((edge) => {
                 const from = String(edge.source ?? edge.from);
                 const to   = String(edge.target ?? edge.to);
-                if (from === String(selectedNode.id)) ids.add(to);
-                if (to === String(selectedNode.id))   ids.add(from);
+                if (selectedIds.has(from)) { ids.add(to); const cn = nodeMap.get(to); if (cn) ids.add(String(cn.id)); }
+                if (selectedIds.has(to))   { ids.add(from); const cn = nodeMap.get(from); if (cn) ids.add(String(cn.id)); }
             });
             return ids;
         }
         // No selection: filter drives active state
         adjustedNodes.forEach((n) => {
-            if (matchesFilter(n, filter)) ids.add(String(n.id));
+            const matches = n._isCluster
+                ? n._clusterNodes.some((cn) => matchesFilter(cn, filter))
+                : matchesFilter(n, filter);
+            if (matches) ids.add(String(n.id));
         });
         return ids;
-    }, [activeChain, chainNodeIds, selectedNode, graphData, adjustedNodes, filter]);
+    }, [activeChain, chainNodeIds, selectedNode, selectedIds, graphData, adjustedNodes, filter, nodeMap]);
 
     // Per-node edges (shown on node click). Hidden while a chain is active.
     const visibleEdges = useMemo(() => {
         if (!selectedNode || activeChain) return [];
-        const selId = String(selectedNode.id);
-        const edges  = Array.isArray(graphData?.edges) ? graphData.edges : [];
+        const edges = Array.isArray(graphData?.edges) ? graphData.edges : [];
         return edges
             .map((e) => ({
                 from: String(e.source ?? e.from),
                 to:   String(e.target ?? e.to),
             }))
-            .filter((e) => (e.from === selId || e.to === selId) && e.from !== e.to)
+            .filter((e) => (selectedIds.has(e.from) || selectedIds.has(e.to)) && e.from !== e.to)
             .filter((e) => nodeMap.has(e.from) && nodeMap.has(e.to));
-    }, [selectedNode, activeChain, graphData, nodeMap]);
+    }, [selectedNode, selectedIds, activeChain, graphData, nodeMap]);
 
     // Map fit points — zoom to chain nodes when chain active, filter-matching nodes when filtered, else all
     const fitNodes = useMemo(() => {
@@ -350,7 +381,6 @@ export default function NetworkCanvas() {
                     const isGreyed   = (!!activeChain && !chainNodeIds.has(id)) ||
                                        (!activeChain && !activeNodeIds.has(id) && (filter !== 'All' || !!selectedNode));
                     const icon       = makeIcon(node, isActive, isSelected, isGreyed);
-                    const name       = node.name || node.displayName || node.address || null;
 
                     return (
                         <Marker
@@ -367,27 +397,15 @@ export default function NetworkCanvas() {
                             }}
                             icon={icon}
                         >
-                            <Tooltip direction="top" offset={[0, -6]} opacity={0.95}>
-                                <div className="text-xs space-y-0.5">
-                                    <div className="font-semibold">{name || 'Unknown'}</div>
-                                    {isUserLikeNode(node) && (
-                                        <div style={{
-                                            color: node.hasAgent === true
-                                                ? '#22C98A'
-                                                : node.hasAgent === false
-                                                  ? '#EF4444'
-                                                  : '#9CA3AF',
-                                            fontSize: 10,
-                                        }}>
-                                            {node.hasAgent === true
-                                                ? `Agent: ${node.agentName || 'linked'}`
-                                                : node.hasAgent === false
-                                                  ? 'No agent'
-                                                  : ''}
-                                        </div>
-                                    )}
-                                </div>
-                            </Tooltip>
+                            {(node.address || node._isCluster) && (
+                                <Tooltip direction="top" offset={[0, -6]} opacity={0.95} permanent={false}>
+                                    <span className="text-xs">
+                                        {node._isCluster
+                                            ? maskValue(node._clusterNodes[0]?.address) || `${node._clusterCount} nodes`
+                                            : maskValue(node.address)}
+                                    </span>
+                                </Tooltip>
+                            )}
                         </Marker>
                     );
                 })}

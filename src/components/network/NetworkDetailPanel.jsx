@@ -54,6 +54,93 @@ function getDisplayName(node) {
         : null;
 }
 
+function ClusterDetail({ node, onClose, maskValue }) {
+    const roles = (n) => getRoles(n);
+    const sharedAddress = node._clusterNodes?.[0]?.address;
+    const lat = node.lat ? Number(node.lat).toFixed(4) : null;
+    const lng = node.lng ? Number(node.lng).toFixed(4) : null;
+
+    return (
+        <div className="p-5 flex-1 overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-start justify-between mb-5">
+                <div className="min-w-0 flex-1">
+                    <h2 className="text-base font-bold leading-tight" style={{ color: '#F0F2F7' }}>
+                        {node._clusterCount} nodes here
+                    </h2>
+                    {sharedAddress && (
+                        <div className="flex items-start gap-2 mt-1.5">
+                            <MapPin className="w-3 h-3 mt-0.5 shrink-0" style={{ color: '#4D5A7C' }} />
+                            <p className="text-xs" style={{ color: '#8B96B8' }}>
+                                {maskValue(sharedAddress)}
+                            </p>
+                        </div>
+                    )}
+                    {lat && lng && (
+                        <p className="text-[10px] font-mono mt-1" style={{ color: '#4D5A7C' }}>
+                            {lat}, {lng}
+                        </p>
+                    )}
+                </div>
+                <button
+                    onClick={onClose}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center transition-all shrink-0"
+                    style={{ border: '1px solid rgba(255,255,255,0.06)', color: '#4D5A7C' }}
+                >
+                    <X className="w-4 h-4" />
+                </button>
+            </div>
+
+            <div className="space-y-2">
+                {node._clusterNodes.map((n, i) => {
+                    const name = getDisplayName(n) || 'Unknown';
+                    const nodeRoles = roles(n);
+                    return (
+                        <div
+                            key={n.id || i}
+                            className="p-3 rounded-xl space-y-2"
+                            style={{ background: '#131D32', border: '1px solid rgba(255,255,255,0.06)' }}
+                        >
+                            <div className="flex items-start justify-between gap-2">
+                                <span className="text-xs font-semibold truncate" style={{ color: '#F0F2F7' }}>
+                                    {maskValue(name)}
+                                </span>
+                                {n.hasAgent === true ? (
+                                    <UserCheck className="w-3.5 h-3.5 shrink-0" style={{ color: '#22C98A' }} />
+                                ) : n.hasAgent === false ? (
+                                    <UserX className="w-3.5 h-3.5 shrink-0" style={{ color: '#EF4444' }} />
+                                ) : null}
+                            </div>
+                            {nodeRoles.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                    {nodeRoles.map((role) => (
+                                        <span
+                                            key={role}
+                                            className="text-[10px] px-2 py-0.5 rounded-md font-medium"
+                                            style={{
+                                                background: 'rgba(34,201,138,0.1)',
+                                                border: '1px solid rgba(34,201,138,0.2)',
+                                                color: '#22C98A',
+                                            }}
+                                        >
+                                            {role}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                            {n.agentName && (
+                                <p className="text-[10px]" style={{ color: '#8B96B8' }}>
+                                    {maskValue(n.agentName)}
+                                </p>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 export default function NetworkDetailPanel() {
     const { selectedNode, setSelectedNode, detailsOpen, privacyMode } = useNetworkContext();
     const [nodeDetail, setNodeDetail] = useState(null);
@@ -88,6 +175,7 @@ export default function NetworkDetailPanel() {
 
     const primaryName = displayNode ? (getDisplayName(displayNode) || 'Unknown') : 'Unknown';
     const roles       = displayNode ? getRoles(displayNode) : [];
+    const isCluster   = displayNode?._isCluster;
 
     return (
         <AnimatePresence initial={false}>
@@ -114,6 +202,8 @@ export default function NetworkDetailPanel() {
                         <div className="text-sm font-medium" style={{ color: '#8B96B8' }}>Select a node</div>
                         <p className="text-xs mt-2" style={{ color: '#4D5A7C' }}>to view network metadata</p>
                     </div>
+                ) : isCluster ? (
+                    <ClusterDetail node={displayNode} onClose={() => setSelectedNode(null)} maskValue={maskValue} />
                 ) : (
                     <div className="p-5 flex-1 overflow-y-auto">
                         {/* Header */}
