@@ -87,7 +87,7 @@ export function useDashboardKPI() {
     const query = useQuery({
         queryKey: ['dashboard-kpi'],
         queryFn: fetchKPIStats,
-        refetchInterval: 60 * 1000, // ← auto-refresh every 60s
+        refetchInterval: 30 * 1000,
         refetchIntervalInBackground: false,
         retry: 1,
         staleTime: 30 * 1000,

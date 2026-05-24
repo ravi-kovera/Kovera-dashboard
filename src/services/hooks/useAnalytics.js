@@ -15,9 +15,9 @@ export function useDashboardSummary(params) {
     return useQuery({
         queryKey: ['analytics', 'dashboard', params],
         queryFn: () => analyticsAPI.getDashboard(params).then((r) => r.data),
-        staleTime: 60_000,
-        refetchInterval: 60_000,
-        refetchIntervalInBackground: false, // stop polling when tab is backgrounded
+        staleTime: 30_000,
+        refetchInterval: 30_000,
+        refetchIntervalInBackground: false,
     });
 }
 
@@ -29,7 +29,9 @@ export function useUserSignups(params) {
     return useQuery({
         queryKey: ['analytics', 'user-signups', params],
         queryFn: () => analyticsAPI.getUserSignups(params).then((r) => r.data),
-        staleTime: 60_000,
+        staleTime: 30_000,
+        refetchInterval: 30_000,
+        refetchIntervalInBackground: false,
     });
 }
 
@@ -37,7 +39,9 @@ export function useOnboardingFunnel() {
     return useQuery({
         queryKey: ['analytics', 'onboarding-funnel'],
         queryFn: () => analyticsAPI.getOnboardingFunnel().then((r) => r.data),
-        staleTime: 60_000,
+        staleTime: 30_000,
+        refetchInterval: 30_000,
+        refetchIntervalInBackground: false,
     });
 }
 
@@ -45,7 +49,9 @@ export function useRolesDistribution() {
     return useQuery({
         queryKey: ['analytics', 'roles-distribution'],
         queryFn: () => analyticsAPI.getRolesDistribution().then((r) => r.data),
-        staleTime: 60_000,
+        staleTime: 30_000,
+        refetchInterval: 30_000,
+        refetchIntervalInBackground: false,
     });
 }
 
@@ -53,7 +59,9 @@ export function useUserActivity(params) {
     return useQuery({
         queryKey: ['analytics', 'user-activity', params],
         queryFn: () => analyticsAPI.getUserActivity(params).then((r) => r.data),
-        staleTime: 60_000,
+        staleTime: 30_000,
+        refetchInterval: 30_000,
+        refetchIntervalInBackground: false,
     });
 }
 
@@ -65,7 +73,9 @@ export function useImpressions(params) {
     return useQuery({
         queryKey: ['analytics', 'impressions', params],
         queryFn: () => analyticsAPI.getImpressions(params).then((r) => r.data),
-        staleTime: 60_000,
+        staleTime: 30_000,
+        refetchInterval: 30_000,
+        refetchIntervalInBackground: false,
     });
 }
 
@@ -73,7 +83,9 @@ export function useSwipeRates(params) {
     return useQuery({
         queryKey: ['analytics', 'swipe-rates', params],
         queryFn: () => analyticsAPI.getSwipeRates(params).then((r) => r.data),
-        staleTime: 60_000,
+        staleTime: 30_000,
+        refetchInterval: 30_000,
+        refetchIntervalInBackground: false,
     });
 }
 
@@ -155,7 +167,9 @@ export function useChainStatus(params) {
     return useQuery({
         queryKey: ['analytics', 'chain-status', params],
         queryFn: () => analyticsAPI.getChainStatus(params).then((r) => r.data),
-        staleTime: 60_000,
+        staleTime: 30_000,
+        refetchInterval: 30_000,
+        refetchIntervalInBackground: false,
     });
 }
 
@@ -163,7 +177,9 @@ export function useChainTypes() {
     return useQuery({
         queryKey: ['analytics', 'chain-types'],
         queryFn: () => analyticsAPI.getChainTypes().then((r) => r.data),
-        staleTime: 60_000,
+        staleTime: 30_000,
+        refetchInterval: 30_000,
+        refetchIntervalInBackground: false,
     });
 }
 
@@ -171,7 +187,9 @@ export function useChainSize() {
     return useQuery({
         queryKey: ['analytics', 'chain-size'],
         queryFn: () => analyticsAPI.getChainSize().then((r) => r.data),
-        staleTime: 60_000,
+        staleTime: 30_000,
+        refetchInterval: 30_000,
+        refetchIntervalInBackground: false,
     });
 }
 
@@ -213,7 +231,9 @@ export function useListingsOverview() {
     return useQuery({
         queryKey: ['analytics', 'listings-overview'],
         queryFn: () => analyticsAPI.getListingsOverview().then((r) => r.data),
-        staleTime: 60_000,
+        staleTime: 30_000,
+        refetchInterval: 30_000,
+        refetchIntervalInBackground: false,
     });
 }
 
@@ -414,8 +434,8 @@ export function useAgentOverviewMetrics() {
     return useQuery({
         queryKey: ['analytics', 'agent-overview-metrics'],
         queryFn: () => analyticsAPI.getAgentOverviewMetrics().then((r) => r.data),
-        staleTime: 60_000,
-        refetchInterval: 60_000,
+        staleTime: 30_000,
+        refetchInterval: 30_000,
         refetchIntervalInBackground: false,
     });
 }
@@ -424,8 +444,8 @@ export function useUserFunnelMetrics() {
     return useQuery({
         queryKey: ['analytics', 'user-funnel-metrics'],
         queryFn: () => analyticsAPI.getUserFunnelMetrics().then((r) => r.data),
-        staleTime: 60_000,
-        refetchInterval: 60_000,
+        staleTime: 30_000,
+        refetchInterval: 30_000,
         refetchIntervalInBackground: false,
     });
 }
