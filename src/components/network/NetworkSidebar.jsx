@@ -101,11 +101,11 @@ export default function NetworkSidebar() {
                 }}
             >
                 <NodeShape shape={item.shape} color={isActive ? item.color : '#4D5A7C'} size={9} />
-                <span className="text-[11px] truncate flex-1" style={{ color: isActive ? '#F0F2F7' : '#8B96B8' }}>
+                <span className="text-sm truncate flex-1" style={{ color: isActive ? '#F0F2F7' : '#8B96B8' }}>
                     {item.label}
                 </span>
                 <span
-                    className="text-[10px] font-mono tabular-nums shrink-0"
+                    className="text-xs font-mono tabular-nums shrink-0"
                     style={{ color: isActive ? item.color : '#4D5A7C' }}
                 >
                     {count}
@@ -137,7 +137,7 @@ export default function NetworkSidebar() {
                                 className="p-3 rounded-xl"
                                 style={{ background: '#131D32', border: '1px solid rgba(255,255,255,0.06)' }}
                             >
-                                <div className="flex justify-between text-[10px]" style={{ color: '#4D5A7C' }}>
+                                <div className="flex justify-between text-xs" style={{ color: '#4D5A7C' }}>
                                     <span>{totalNodes} nodes</span>
                                     <span>{totalEdges} edges</span>
                                 </div>
@@ -146,7 +146,7 @@ export default function NetworkSidebar() {
                             {/* Node filters */}
                             <div>
                                 <h3
-                                    className="text-[9px] uppercase tracking-[0.2em] font-semibold mb-2 px-1"
+                                    className="text-[11px] uppercase tracking-[0.2em] font-semibold mb-2 px-1"
                                     style={{ color: '#4D5A7C' }}
                                 >
                                     Node Filters
@@ -154,12 +154,12 @@ export default function NetworkSidebar() {
                                 <div className="space-y-0.5">
                                     <FilterRow item={filterAll} />
 
-                                    <div className="text-[9px] uppercase tracking-widest px-3 pt-2 pb-0.5" style={{ color: '#4D5A7C' }}>
+                                    <div className="text-[11px] uppercase tracking-widest px-3 pt-2 pb-0.5" style={{ color: '#4D5A7C' }}>
                                         Properties
                                     </div>
                                     {groupProperty.map((f) => <FilterRow key={f.key} item={f} />)}
 
-                                    <div className="text-[9px] uppercase tracking-widest px-3 pt-2 pb-0.5" style={{ color: '#4D5A7C' }}>
+                                    <div className="text-[11px] uppercase tracking-widest px-3 pt-2 pb-0.5" style={{ color: '#4D5A7C' }}>
                                         People
                                     </div>
                                     {groupPeople.map((f) => <FilterRow key={f.key} item={f} />)}
@@ -177,7 +177,7 @@ export default function NetworkSidebar() {
                                     }}
                                 >
                                     <span
-                                        className="text-[11px] font-medium"
+                                        className="text-sm font-medium"
                                         style={{ color: chainsPanelOpen ? '#F0F2F7' : '#8B96B8' }}
                                     >
                                         Chains

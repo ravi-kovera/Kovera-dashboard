@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { searchAPI } from '@/services/api';
+import { analyticsAPI } from '@/services/api/analytics';
 import { useDebounce } from './useDebounce';
 
 /**
@@ -16,7 +16,7 @@ export function useSearch({ query, type = 'all', page = 1, limit = 20 }) {
             if (!debouncedQuery || debouncedQuery.trim().length < 1) {
                 return { results: [], total: 0, page: 1 };
             }
-            const res = await searchAPI.query({
+            const res = await analyticsAPI.search({
                 q: debouncedQuery,
                 type: type !== 'all' ? type : undefined,
                 page,

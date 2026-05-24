@@ -194,7 +194,7 @@ export default function Dashboard() {
             {
                 key: 'totalUsers',
                 title: 'Total Users',
-                value: fmtNum(dash.totalUsers),
+                value: fmtNum(activity?.totalUsers ?? dash.totalUsers),
                 change: fmtPct(pc.newUsers?.changePct),
                 trend: (pc.newUsers?.changePct || 0) >= 0 ? 'up' : 'down',
                 icon: Users,
@@ -342,7 +342,7 @@ export default function Dashboard() {
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-white tracking-tight">
-                        Analytics Dashboard
+                        Overview
                     </h1>
                     <p className="text-muted mt-1 text-sm">
                         Platform-wide analytics powered by the Kovera API.
@@ -358,7 +358,8 @@ export default function Dashboard() {
                         <RefreshCw className="w-4 h-4" /> Refresh
                     </Button>
                     <Button variant="outline" size="sm">
-                        <CalendarDays className="w-4 h-4" /> Jan 2025 — Today
+                        <CalendarDays className="w-4 h-4" />
+                        <span className="hidden sm:inline">Jan 2025 — Today</span>
                     </Button>
                 </div>
             </div>

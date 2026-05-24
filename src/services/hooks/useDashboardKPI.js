@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { statsAPI } from '@/services/api';
+import { analyticsAPI } from '@/services/api/analytics';
 import { Users, UserCog, Building2, Heart, UserCheck } from 'lucide-react';
 
 /**
@@ -18,9 +19,9 @@ function formatValue(num) {
  * Returns normalized card data.
  */
 async function fetchKPIStats() {
-    const [usersRes, agentsRes, propertiesRes, likesRes, activeRes] =
+    const [activityRes, agentsRes, propertiesRes, likesRes, activeRes] =
         await Promise.all([
-            statsAPI.getUsersCount(),
+            analyticsAPI.getUserActivity({}),
             statsAPI.getAgentsCount(),
             statsAPI.getPropertiesCount(),
             statsAPI.getPropertyLikes(),
@@ -31,9 +32,9 @@ async function fetchKPIStats() {
         {
             key: 'totalUsers',
             title: 'Total Users',
-            value: formatValue(usersRes.data?.count),
-            change: usersRes.data?.change || '+0%',
-            trend: usersRes.data?.trend || 'up',
+            value: formatValue(activityRes.data?.totalUsers),
+            change: '+0%',
+            trend: 'up',
             icon: Users,
             accentColor: 'blue',
         },

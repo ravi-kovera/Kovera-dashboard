@@ -35,7 +35,7 @@ function decodeJWT(token) {
 function isTokenExpired(token) {
     const payload = decodeJWT(token);
     if (!payload?.exp) return false;
-    return payload.exp < Math.floor(Date.now() / 1000) + 60; // 60s buffer
+    return payload.exp < Math.floor(Date.now() / 1000);
 }
 
 function getTimeUntilExpiry(token) {
@@ -103,12 +103,26 @@ export function AuthProvider({ children }) {
         (jwt) => {
             if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
             const ms = getTimeUntilExpiry(jwt);
-            if (ms > 0) {
-                logoutTimerRef.current = setTimeout(
-                    () => logout('token expired'),
-                    ms,
-                );
-            }
+            if (ms <= 0) return;
+
+            // Fire 30s before expiry to silently refresh. If the refresh
+            // succeeds the new token is stored and a fresh timer is scheduled.
+            // Only fall back to logout if the refresh itself fails.
+            const fireAt = Math.max(ms - 30_000, 0);
+            logoutTimerRef.current = setTimeout(async () => {
+                const refreshToken = tokenStore.getRefresh();
+                if (!refreshToken) { logout('token expired, no refresh token'); return; }
+                try {
+                    const { accessToken, refreshToken: nextRefresh, account } =
+                        await authAPI.refresh({ refreshToken });
+                    tokenStore.set(accessToken);
+                    tokenStore.setRefresh(nextRefresh);
+                    if (account) sessionStorage.setItem('auth_user', JSON.stringify(account));
+                    scheduleAutoLogout(accessToken);
+                } catch {
+                    logout('token expired, refresh failed');
+                }
+            }, fireAt);
         },
         [logout],
     );

@@ -5,6 +5,7 @@ import {
     CardTitle,
     CardContent,
     Button,
+    Badge,
     Skeleton,
 } from '@/components/ui';
 import { StatCard, EmptyState } from '@/components/common';

@@ -22,7 +22,7 @@ import { KoveraLogo } from '@/components/common/KoveraLogo';
 
 /* ── Navigation Config ── */
 const mainNav = [
-    { to: '/dashboard', label: 'Dashboard', icon: BarChart2 },
+    { to: '/dashboard', label: 'Overview', icon: BarChart2 },
     { to: '/search', label: 'Search', icon: Search },
     { to: '/users', label: 'Users', icon: Users },
     { to: '/agents', label: 'Agents', icon: UserCheck },

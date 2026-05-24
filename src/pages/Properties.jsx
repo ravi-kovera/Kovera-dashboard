@@ -3,7 +3,6 @@ import {
     Button,
     Badge,
     Card,
-    CardContent,
     Select,
     Tabs,
     TabsList,
@@ -11,7 +10,6 @@ import {
     TabsContent,
 } from '@/components/ui';
 import {
-    Plus,
     Search,
     X,
     Building2,
@@ -32,8 +30,6 @@ import {
     Eye,
     DollarSign,
     User,
-    Calendar,
-    ImageIcon,
 } from 'lucide-react';
 import {
     useProperties,
@@ -196,7 +192,7 @@ function PropertyDetailModal({ propertyId, onClose }) {
                         </div>
 
                         {/* ── Quick Stats ── */}
-                        <div className="grid grid-cols-4 gap-3 px-5 py-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 px-5 py-3">
                             <div className="flex items-center gap-2 p-2 rounded-lg bg-navy-950 border border-border">
                                 <Bed className="w-4 h-4 text-muted-foreground" />
                                 <span className="text-sm font-medium text-white">
@@ -341,13 +337,12 @@ function PropertyDetailModal({ propertyId, onClose }) {
                                             status: e.target.value,
                                         })
                                     }
-                                    disabled={updateStatus.isLoading}
+                                    disabled={updateStatus.isPending}
                                     className="w-32 bg-navy-900"
                                 >
                                     <option value="Active">Active</option>
-                                    <option value="Pending">Pending</option>
-                                    <option value="Sold">Sold</option>
                                     <option value="Hidden">Hidden</option>
+                                    <option value="Featured">Featured</option>
                                 </Select>
                             </div>
                             <div className="flex items-center gap-2">
@@ -356,11 +351,7 @@ function PropertyDetailModal({ propertyId, onClose }) {
                                     size="sm"
                                     onClick={onClose}
                                 >
-                                    Close
-                                </Button>
-                                <Button size="sm">
-                                    <Eye className="w-4 h-4" /> View Full
-                                    Listing
+                                    <Eye className="w-4 h-4" /> Close
                                 </Button>
                             </div>
                         </div>
@@ -539,9 +530,6 @@ export default function PropertiesPage() {
                             <List className="w-4 h-4" />
                         </button>
                     </div>
-                    <Button>
-                        <Plus className="w-4 h-4" /> Add Property
-                    </Button>
                 </div>
             </div>
 
@@ -816,8 +804,8 @@ export default function PropertiesPage() {
 
             {/* ── Pagination ── */}
             {totalPages > 1 && (
-                <div className="flex items-center justify-between">
-                    <p className="text-xs text-muted">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+                    <p className="text-xs text-muted hidden sm:block">
                         Showing{' '}
                         <span className="text-white font-medium">
                             {(page - 1) * limit + 1}

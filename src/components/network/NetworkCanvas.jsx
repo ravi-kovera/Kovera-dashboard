@@ -24,17 +24,17 @@ const SEL_SIZE = 18;   // selected
 const BORDER  = 2.5;   // hollow ring border width
 
 function makeIcon(node, isActive, isSelected, isGreyed) {
-    const color  = isGreyed ? '#4D5A7C' : nodeColor(node);
-    const active = isActive && !isGreyed;
-    const sz     = isSelected ? SEL_SIZE : DOT_SIZE;
+    const color   = isGreyed ? '#4D5A7C' : nodeColor(node);
+    const active  = isActive && !isGreyed;
+    const sz      = isSelected ? SEL_SIZE : DOT_SIZE;
+    const opacity = isGreyed ? 'opacity:0.25;' : '';
 
     // Cluster pin — solid circle with count badge
     if (node._isCluster) {
-        const bg = isGreyed ? '#4D5A7C' : color;
-        const d  = isSelected ? SEL_SIZE + 4 : DOT_SIZE + 4;
+        const d = isSelected ? SEL_SIZE + 4 : DOT_SIZE + 4;
         return L.divIcon({
             className: '',
-            html: `<div style="width:${d}px;height:${d}px;background:${bg};border-radius:9999px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:2px solid rgba(255,255,255,0.3);"><span style="color:#000;font-size:${Math.round(d * 0.48)}px;font-weight:900;line-height:1;">${node._clusterCount}</span></div>`,
+            html: `<div style="width:${d}px;height:${d}px;background:${color};border-radius:9999px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;border:2px solid rgba(255,255,255,0.3);${opacity}"><span style="color:${isGreyed ? '#8B96B8' : '#000'};font-size:${Math.round(d * 0.48)}px;font-weight:900;line-height:1;">${node._clusterCount}</span></div>`,
             iconSize: [d, d],
             iconAnchor: [d / 2, d / 2],
         });
@@ -49,8 +49,8 @@ function makeIcon(node, isActive, isSelected, isGreyed) {
         return L.divIcon({
             className: '',
             html: active
-                ? `<div style="width:${d}px;height:${d}px;background:${color};transform:rotate(45deg);position:relative;box-sizing:border-box;">${inner}</div>`
-                : `<div style="width:${d}px;height:${d}px;border:${BORDER}px solid ${color};transform:rotate(45deg);background:transparent;box-sizing:border-box;"></div>`,
+                ? `<div style="width:${d}px;height:${d}px;background:${color};transform:rotate(45deg);position:relative;box-sizing:border-box;${opacity}">${inner}</div>`
+                : `<div style="width:${d}px;height:${d}px;border:${BORDER}px solid ${color};transform:rotate(45deg);background:transparent;box-sizing:border-box;${opacity}"></div>`,
             iconSize: [d, d],
             iconAnchor: [d / 2, d / 2],
         });
@@ -60,7 +60,7 @@ function makeIcon(node, isActive, isSelected, isGreyed) {
     if (!active) {
         return L.divIcon({
             className: '',
-            html: `<div style="width:${sz}px;height:${sz}px;border:${BORDER}px solid ${color};border-radius:9999px;background:transparent;box-sizing:border-box;"></div>`,
+            html: `<div style="width:${sz}px;height:${sz}px;border:${BORDER}px solid ${color};border-radius:9999px;background:transparent;box-sizing:border-box;${opacity}"></div>`,
             iconSize: [sz, sz],
             iconAnchor: [sz / 2, sz / 2],
         });
@@ -68,14 +68,14 @@ function makeIcon(node, isActive, isSelected, isGreyed) {
     if (isMonetizable) {
         return L.divIcon({
             className: '',
-            html: `<div style="width:${sz}px;height:${sz}px;background:${color};border-radius:9999px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;"><span style="color:#000;font-size:${Math.round(sz * 0.55)}px;font-weight:900;line-height:1;">+</span></div>`,
+            html: `<div style="width:${sz}px;height:${sz}px;background:${color};border-radius:9999px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;${opacity}"><span style="color:#000;font-size:${Math.round(sz * 0.55)}px;font-weight:900;line-height:1;">+</span></div>`,
             iconSize: [sz, sz],
             iconAnchor: [sz / 2, sz / 2],
         });
     }
     return L.divIcon({
         className: '',
-        html: `<div style="width:${sz}px;height:${sz}px;background:${color};border-radius:9999px;box-sizing:border-box;"></div>`,
+        html: `<div style="width:${sz}px;height:${sz}px;background:${color};border-radius:9999px;box-sizing:border-box;${opacity}"></div>`,
         iconSize: [sz, sz],
         iconAnchor: [sz / 2, sz / 2],
     });
@@ -92,11 +92,23 @@ function FitBounds({ points, maxZoom }) {
     return null;
 }
 
+// Calls invalidateSize whenever any panel opens/closes so Leaflet recalculates
+// the map container size and redraws polylines into the correct space.
+function MapResizer({ detailsOpen, netSidebarOpen, chainsPanelOpen }) {
+    const map = useMap();
+    useEffect(() => {
+        // Delay slightly longer than the animation duration (150–300 ms) so the
+        // CSS transition has finished before Leaflet measures the container.
+        const t = setTimeout(() => map.invalidateSize(), 320);
+        return () => clearTimeout(t);
+    }, [detailsOpen, netSidebarOpen, chainsPanelOpen, map]);
+    return null;
+}
+
 // ── Coordinate clustering ─────────────────────────────────────────────
-// Nodes within the same 3dp lat/lng cell (~111 m) are merged into one
-// cluster pin. Single-node groups pass through unchanged.
+// Only nodes with exactly the same coordinates are merged into one cluster pin.
 function coordKey(lat, lng) {
-    return `${Math.round(Number(lat) * 1000)}:${Math.round(Number(lng) * 1000)}`;
+    return `${Number(lat)}:${Number(lng)}`;
 }
 
 function clusterNodesByCoord(nodes) {
@@ -132,8 +144,10 @@ const percentile = (arr, p) => {
 
 // ── Main component ───────────────────────────────────────────────────
 export default function NetworkCanvas() {
-    const { graphData, filter, selectedNode, setSelectedNode, setActiveChain, privacyMode, activeChain } =
-        useNetworkContext();
+    const {
+        graphData, filter, selectedNode, setSelectedNode, setActiveChain,
+        privacyMode, activeChain, detailsOpen, netSidebarOpen, chainsPanelOpen,
+    } = useNetworkContext();
     const showTiles = privacyMode === 'private';
 
     const maskValue = (value) => {
@@ -221,8 +235,11 @@ export default function NetworkCanvas() {
             return ids;
         }
         if (selectedNode) {
-            // Mark the cluster/node itself active
+            // Mark the cluster/node itself active (both composite and constituent IDs)
             ids.add(String(selectedNode.id));
+            if (selectedNode._isCluster) {
+                selectedNode._clusterNodes.forEach((cn) => ids.add(String(cn.id)));
+            }
             const edges = Array.isArray(graphData?.edges) ? graphData.edges : [];
             edges.forEach((edge) => {
                 const from = String(edge.source ?? edge.from);
@@ -255,17 +272,19 @@ export default function NetworkCanvas() {
             .filter((e) => nodeMap.has(e.from) && nodeMap.has(e.to));
     }, [selectedNode, selectedIds, activeChain, graphData, nodeMap]);
 
-    // Map fit points — zoom to chain nodes when chain active, filter-matching nodes when filtered, else all
+    // Map fit points — zoom to chain nodes when chain active, filter-matching nodes when filtered, else all.
+    // selectedNode is intentionally excluded: clicking a node must not trigger a re-fit.
     const fitNodes = useMemo(() => {
         if (activeChain && chainNodeIds.size) {
             return adjustedNodes.filter((n) => chainNodeIds.has(String(n.id)));
         }
-        if (filter !== 'All' && !selectedNode) {
+        if (filter !== 'All') {
             const matching = adjustedNodes.filter((n) => matchesFilter(n, filter));
             return matching.length ? matching : adjustedNodes;
         }
         return adjustedNodes;
-    }, [activeChain, chainNodeIds, adjustedNodes, filter, selectedNode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeChain, chainNodeIds, adjustedNodes, filter]);
 
     const allPoints = useMemo(
         () => fitNodes.map((n) => [Number(n.renderLat ?? n.lat), Number(n.renderLng ?? n.lng)]),
@@ -323,9 +342,10 @@ export default function NetworkCanvas() {
                 zoom={12}
                 className="w-full h-full"
                 zoomControl
-                style={!showTiles ? { background: '#0B0F14' } : undefined}
+                style={{ background: '#0B0F14' }}
             >
                 <FitBounds points={focusPoints} />
+                <MapResizer detailsOpen={detailsOpen} netSidebarOpen={netSidebarOpen} chainsPanelOpen={chainsPanelOpen} />
                 {showTiles && (
                     <TileLayer
                         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -375,11 +395,18 @@ export default function NetworkCanvas() {
 
                 {/* Nodes */}
                 {visibleNodes.map((node) => {
-                    const id         = String(node.id);
-                    const isActive   = activeNodeIds.has(id);
-                    const isSelected = selectedNode && String(selectedNode.id) === id;
-                    const isGreyed   = (!!activeChain && !chainNodeIds.has(id)) ||
-                                       (!activeChain && !activeNodeIds.has(id) && (filter !== 'All' || !!selectedNode));
+                    const id             = String(node.id);
+                    const constituentIds = node._isCluster
+                        ? node._clusterNodes.map((cn) => String(cn.id))
+                        : [id];
+                    const isActive   = activeNodeIds.has(id) || constituentIds.some((nid) => activeNodeIds.has(nid));
+                    const isInChain  = constituentIds.some((nid) => chainNodeIds.has(nid));
+                    const isSelected = selectedNode && (
+                        String(selectedNode.id) === id ||
+                        constituentIds.some((nid) => nid === String(selectedNode.id))
+                    );
+                    const isGreyed   = (!!activeChain && !isInChain) ||
+                                       (!activeChain && !isActive && (filter !== 'All' || !!selectedNode));
                     const icon       = makeIcon(node, isActive, isSelected, isGreyed);
 
                     return (

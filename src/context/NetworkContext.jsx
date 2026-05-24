@@ -37,9 +37,11 @@ export function NetworkProvider({ children }) {
     const [privacyMode, setPrivacyMode] = useState(
         localStorage.getItem('kovera_privacy_mode') || 'private'
     );
-    const [netSidebarOpen, setNetSidebarOpen] = useState(
-        localStorage.getItem('kovera_sidebar_open') !== 'false'
-    );
+    const [netSidebarOpen, setNetSidebarOpen] = useState(() => {
+        // Start closed on mobile so the map has full canvas space
+        if (typeof window !== 'undefined' && window.innerWidth < 1024) return false;
+        return localStorage.getItem('kovera_sidebar_open') !== 'false';
+    });
     const [detailsOpen, setDetailsOpen] = useState(
         localStorage.getItem('kovera_details_open') === 'true'
     );
@@ -93,7 +95,16 @@ export function NetworkProvider({ children }) {
     }, []);
 
     const toggleChainsPanel = useCallback(() => {
-        setChainsPanelOpen((prev) => !prev);
+        setChainsPanelOpen((prev) => {
+            const next = !prev;
+            // On mobile, sidebar + chain panel together exceed the screen width and
+            // collapse the map to 0px — close the sidebar when chains panel opens.
+            if (next && typeof window !== 'undefined' && window.innerWidth < 1024) {
+                setNetSidebarOpen(false);
+                localStorage.setItem('kovera_sidebar_open', 'false');
+            }
+            return next;
+        });
     }, []);
 
     const toggleDetails = useCallback(() => {
@@ -109,6 +120,11 @@ export function NetworkProvider({ children }) {
         const shouldOpen = Boolean(node);
         setDetailsOpen(shouldOpen);
         localStorage.setItem('kovera_details_open', String(shouldOpen));
+        // On mobile, close the sidebar when the detail panel opens to keep the map usable
+        if (node && typeof window !== 'undefined' && window.innerWidth < 1024) {
+            setNetSidebarOpen(false);
+            setChainsPanelOpen(false);
+        }
     }, []);
 
     const toggleExcludeInternal = useCallback(() => {
@@ -129,7 +145,14 @@ export function NetworkProvider({ children }) {
 
     const setActiveChain = useCallback((chain) => {
         setActiveChainState(chain);
-        if (chain) setFilter('All');
+        if (chain) {
+            setFilter('All');
+            // On mobile, close the chain panel after selecting a chain so the map
+            // has full width to display the chain polylines.
+            if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                setChainsPanelOpen(false);
+            }
+        }
     }, []);
 
     const setChainStatusFilter = useCallback((value) => {

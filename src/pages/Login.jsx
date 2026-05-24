@@ -155,7 +155,7 @@ export default function Login() {
                     </p>
                 </div>
 
-                <div className="rounded-2xl bg-navy-900/60 backdrop-blur-2xl border border-white/[0.08] p-8 shadow-elevated">
+                <div className="rounded-2xl bg-navy-900/60 backdrop-blur-2xl border border-white/[0.08] p-6 sm:p-8 shadow-elevated">
                     {error && (
                         <div className="mb-5 flex items-center gap-3 p-3.5 rounded-xl bg-danger/10 border border-danger/20 animate-scale-in">
                             <div className="shrink-0 w-8 h-8 rounded-lg bg-danger/15 flex items-center justify-center">

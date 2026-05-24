@@ -214,8 +214,8 @@ export function DataTable({
 
             {/* ── Pagination ── */}
             {totalPages > 1 && onPageChange && (
-                <div className="flex items-center justify-between px-5 py-3 border-t border-border">
-                    <p className="text-xs text-muted">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 sm:px-5 py-3 border-t border-border">
+                    <p className="text-xs text-muted hidden sm:block">
                         Showing{' '}
                         <span className="text-white font-medium">
                             {(page - 1) * pageSize + 1}

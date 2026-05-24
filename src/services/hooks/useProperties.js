@@ -1,12 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { propertiesAPI } from '@/services/api';
+import { propertiesAPI } from '@/services/api/analytics';
 
 export function useProperties(params = {}) {
     return useQuery({
         queryKey: ['properties', params],
         queryFn: async () => {
             const res = await propertiesAPI.getAll(params);
-            return res.data;
+            // analytics endpoint returns { listings, total, page, totalPages }
+            // normalise to the shape the page expects: { properties, total, totalPages }
+            const d = res.data;
+            return {
+                properties: d.listings ?? [],
+                total: d.total ?? 0,
+                page: d.page ?? 1,
+                totalPages: d.totalPages ?? 1,
+            };
         },
         staleTime: 30_000,
         placeholderData: (prev) => prev,
@@ -58,3 +66,4 @@ export function useUpdatePropertyStatus() {
         },
     });
 }
+

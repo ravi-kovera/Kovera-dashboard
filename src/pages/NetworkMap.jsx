@@ -35,7 +35,7 @@ function NetworkToolbar() {
             <div className="flex items-center gap-3">
                 <button
                     onClick={toggleNetSidebar}
-                    className="p-1.5 rounded-lg transition-all"
+                    className="flex items-center justify-center w-8 h-8 rounded-lg transition-all cursor-pointer"
                     style={{
                         color: netSidebarOpen ? '#22C98A' : '#4D5A7C',
                         background: netSidebarOpen ? 'rgba(34,201,138,0.1)' : 'transparent',
@@ -68,9 +68,9 @@ function NetworkToolbar() {
             {/* Right */}
             <div className="flex items-center gap-2">
                 {error && (
-                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg" style={{ background: 'rgba(212,83,126,0.1)', border: '1px solid rgba(212,83,126,0.2)' }}>
-                        <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#D4537E' }} />
-                        <span className="text-[10px] font-mono" style={{ color: '#D4537E' }}>
+                    <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-lg max-w-[200px]" style={{ background: 'rgba(212,83,126,0.1)', border: '1px solid rgba(212,83,126,0.2)' }}>
+                        <div className="w-1.5 h-1.5 rounded-full animate-pulse shrink-0" style={{ background: '#D4537E' }} />
+                        <span className="text-[10px] font-mono truncate" style={{ color: '#D4537E' }}>
                             {String(error).substring(0, 40)}
                         </span>
                     </div>
@@ -79,17 +79,17 @@ function NetworkToolbar() {
                 <button
                     onClick={refreshGraph}
                     disabled={loading}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] transition-all disabled:opacity-50"
+                    className="flex items-center justify-center gap-1.5 h-8 px-3 rounded-lg text-[11px] transition-all disabled:opacity-50 cursor-pointer"
                     style={{ border: '1px solid rgba(255,255,255,0.08)', color: '#8B96B8' }}
                     title="Refresh graph"
                 >
-                    <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} style={{ color: '#22C98A' }} />
+                    <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${loading ? 'animate-spin' : ''}`} style={{ color: '#22C98A' }} />
                     <span className="hidden sm:inline">{loading ? 'Syncing…' : 'Refresh'}</span>
                 </button>
 
                 <button
                     onClick={togglePrivacyMode}
-                    className="p-1.5 rounded-lg transition-all"
+                    className="flex items-center justify-center w-8 h-8 rounded-lg transition-all cursor-pointer"
                     style={{
                         color: privacyMode === 'private' ? '#22C98A' : '#4D5A7C',
                         background: privacyMode === 'private' ? 'rgba(34,201,138,0.1)' : 'transparent',

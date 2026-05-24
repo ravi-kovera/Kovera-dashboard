@@ -146,14 +146,4 @@ export const dashboardAPI = {
     getActivity: () => api.get('/dashboard/activity'),
 };
 
-// ===== Properties API =====
-export const propertiesAPI = {
-    getAll: (params) => api.get('/properties', { params }),
-    getById: (id) => api.get(`/properties/${id}`),
-    create: (data) => api.post('/properties', data),
-    update: (id, data) => api.put(`/properties/${id}`, data),
-    delete: (id) => api.delete(`/properties/${id}`),
-    updateStatus: (id, status) =>
-        api.patch(`/properties/${id}/status`, { status }),
-};
 

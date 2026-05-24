@@ -56,7 +56,7 @@ export default function NetworkLegend() {
 
     return (
         <div
-            className="absolute bottom-6 left-6 p-4 rounded-2xl z-[1200] pointer-events-none shadow-2xl"
+            className="absolute bottom-3 left-3 sm:bottom-6 sm:left-6 p-3 sm:p-4 rounded-xl sm:rounded-2xl z-[1200] pointer-events-none shadow-2xl hidden sm:block"
             style={{
                 backdropFilter: 'blur(16px)',
                 background: 'rgba(19,29,50,0.7)',
@@ -65,7 +65,7 @@ export default function NetworkLegend() {
         >
             {/* Node types for active filter */}
             <h4
-                className="text-[9px] uppercase font-semibold tracking-[0.2em] mb-2.5"
+                className="text-[11px] uppercase font-semibold tracking-[0.2em] mb-2.5"
                 style={{ color: '#4D5A7C' }}
             >
                 {filter === 'All' ? 'Node Types' : filter}
@@ -74,7 +74,7 @@ export default function NetworkLegend() {
                 {swatches.map((s) => (
                     <div key={s.label} className="flex items-center gap-3">
                         <Swatch color={s.color} shape={s.shape} />
-                        <span className="text-[10px]" style={{ color: '#8B96B8' }}>{s.label}</span>
+                        <span className="text-xs" style={{ color: '#8B96B8' }}>{s.label}</span>
                     </div>
                 ))}
             </div>
@@ -86,14 +86,14 @@ export default function NetworkLegend() {
                     style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
                 >
                     <h4
-                        className="text-[9px] uppercase font-semibold tracking-[0.2em] mb-2"
+                        className="text-[11px] uppercase font-semibold tracking-[0.2em] mb-2"
                         style={{ color: '#4D5A7C' }}
                     >
                         Agent Link
                     </h4>
                     <div className="flex items-center gap-3">
                         <div style={{ width: 12, height: 12, borderRadius: '9999px', background: agentLinkColor, flexShrink: 0 }} />
-                        <span className="text-[10px]" style={{ color: '#8B96B8' }}>Linked to Agent</span>
+                        <span className="text-xs" style={{ color: '#8B96B8' }}>Linked to Agent</span>
                     </div>
                     <div className="flex items-center gap-3">
                         <div style={{
@@ -102,7 +102,7 @@ export default function NetworkLegend() {
                         }}>
                             <span style={{ color: '#0F1729', fontSize: 8, fontWeight: 900, lineHeight: 1 }}>+</span>
                         </div>
-                        <span className="text-[10px]" style={{ color: '#8B96B8' }}>No Agent</span>
+                        <span className="text-xs" style={{ color: '#8B96B8' }}>No Agent</span>
                     </div>
                 </div>
             )}
@@ -115,11 +115,11 @@ export default function NetworkLegend() {
                 >
                     <div className="flex items-center gap-3">
                         <div style={{ width: 20, height: 1.5, background: '#7C7C8A', opacity: 0.7, flexShrink: 0 }} />
-                        <span className="text-[10px]" style={{ color: '#8B96B8' }}>Confirmed chain</span>
+                        <span className="text-xs" style={{ color: '#8B96B8' }}>Confirmed chain</span>
                     </div>
                     <div className="flex items-center gap-3">
                         <div style={{ width: 20, height: 0, borderTop: '2px dashed #7C7C8A', opacity: 0.7, flexShrink: 0 }} />
-                        <span className="text-[10px]" style={{ color: '#8B96B8' }}>Unconfirmed chain</span>
+                        <span className="text-xs" style={{ color: '#8B96B8' }}>Unconfirmed chain</span>
                     </div>
                 </div>
             )}

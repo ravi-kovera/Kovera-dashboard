@@ -618,6 +618,11 @@ function FlowNode({ participant, index, onAssign }) {
                                     {participant.agentEmail}
                                 </p>
                             )}
+                            {participant.agentBrokerage && (
+                                <p className="text-[10px] text-green-400/50 truncate">
+                                    {participant.agentBrokerage}
+                                </p>
+                            )}
                         </div>
                     </div>
                 ) : agented ? (
@@ -653,6 +658,7 @@ function FlowNode({ participant, index, onAssign }) {
                         <UserCheck className="w-3.5 h-3.5" /> Assign Agent
                     </button>
                 )}
+
             </div>
         </div>
     );

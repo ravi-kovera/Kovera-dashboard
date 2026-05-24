@@ -25,16 +25,18 @@ function Tabs({ value, onValueChange, defaultValue, children, className }) {
 }
 
 /* ── TabsList ── */
-const TabsList = forwardRef(({ className, ...props }, ref) => (
-    <div
-        ref={ref}
-        role="tablist"
-        className={cn(
-            'inline-flex items-center gap-1 p-1 rounded-xl bg-navy-900 border border-border',
-            className,
-        )}
-        {...props}
-    />
+const TabsList = forwardRef(({ className, wrapperClassName, ...props }, ref) => (
+    <div className={cn('w-full overflow-x-auto pb-0.5', wrapperClassName)}>
+        <div
+            ref={ref}
+            role="tablist"
+            className={cn(
+                'inline-flex items-center gap-1 p-1 rounded-xl bg-navy-900 border border-border',
+                className,
+            )}
+            {...props}
+        />
+    </div>
 ));
 TabsList.displayName = 'TabsList';
 

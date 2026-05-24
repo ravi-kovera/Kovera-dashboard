@@ -6,7 +6,7 @@ export default function ChainList() {
     const chains = Array.isArray(graphData?.chains) ? graphData.chains.filter(Boolean) : [];
 
     if (!chains.length) {
-        return <div style={{ color: '#4D5A7C', fontSize: 10 }} className="italic py-2">No chains detected.</div>;
+        return <div style={{ color: '#4D5A7C', fontSize: 12 }} className="italic py-2">No chains detected.</div>;
     }
 
     return (
@@ -54,26 +54,26 @@ export default function ChainList() {
                     >
                         <div className="flex justify-between items-start gap-2 mb-1">
                             <span
-                                className="text-[10px] font-bold font-mono truncate max-w-[140px]"
+                                className="text-xs font-bold font-mono truncate max-w-[140px]"
                                 style={{ color: chain.isReady ? '#22C98A' : '#4D5A7C' }}
                             >
                                 {cid}
                             </span>
                             {chain.isReady && (
                                 <span
-                                    className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold shrink-0"
+                                    className="text-sm px-1.5 py-0.5 rounded-full font-semibold shrink-0"
                                     style={{ background: 'rgba(34,201,138,0.2)', color: '#22C98A' }}
                                 >
                                     READY
                                 </span>
                             )}
                         </div>
-                        <div className="text-[10px] uppercase tracking-wide mb-1" style={{ color: '#4D5A7C' }}>
+                        <div className="text-xs uppercase tracking-wide mb-1" style={{ color: '#4D5A7C' }}>
                             {chain.chainType || 'chain'} · {pathLen} hop{pathLen === 1 ? '' : 's'}
                             {mappedLen > 0 && mappedLen < ord.length ? ` · ${mappedLen}/${ord.length} on map` : ''}
                         </div>
                         <div
-                            className="text-[11px] leading-snug line-clamp-2"
+                            className="text-sm leading-snug line-clamp-2"
                             style={{ color: '#8B96B8' }}
                             title={routeLabel}
                         >

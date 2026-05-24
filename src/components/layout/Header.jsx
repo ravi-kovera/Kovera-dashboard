@@ -1,4 +1,4 @@
-import { Bell, User, Menu, BarChart2, Network } from 'lucide-react';
+import { User, Menu, BarChart2, Network } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useSidebar } from '@/context/SidebarContext';
 import { useAuth } from '@/context/AuthContext';
@@ -17,7 +17,7 @@ function initialsFor(user) {
 }
 
 const pageTitles = {
-    dashboard: 'Dashboard',
+    dashboard: 'Overview',
     search: 'Search',
     users: 'Users',
     agents: 'Agents',
@@ -38,7 +38,7 @@ export function Header() {
     const pageTitle = mode === 'network' ? 'Network' : (pageTitles[segment] || 'Dashboard');
 
     return (
-        <header className="sticky top-0 z-30 h-16 bg-navy-900/80 backdrop-blur-xl border-b border-border flex items-center justify-between px-6 gap-4">
+        <header className="sticky top-0 z-30 h-16 bg-navy-900/80 backdrop-blur-xl border-b border-border flex items-center justify-between px-4 sm:px-6 gap-2 sm:gap-4">
             {/* Left — Mobile toggle + Breadcrumb */}
             <div className="flex items-center gap-4">
                 <button
@@ -93,11 +93,6 @@ export function Header() {
 
             {/* Right — Actions */}
             <div className="flex items-center gap-2">
-                <button className="relative p-2 rounded-xl text-muted hover:text-white hover:bg-surface-hover transition-colors cursor-pointer">
-                    <Bell className="w-5 h-5" />
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full animate-pulse-slow" />
-                </button>
-
                 <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
 
                 <button className="flex items-center gap-3 px-3 py-1.5 rounded-xl hover:bg-surface-hover transition-colors cursor-pointer">

@@ -121,6 +121,10 @@ export const analyticsAPI = {
 
     getChainsMap: () => analyticsClient.get('/api/analytics/chains/map'),
 
+    // ── Search ──
+    search: (params) =>
+        analyticsClient.get('/api/analytics/search', { params }),
+
     // ── Admin paginated lists ──
     getUsersList: (params) =>
         analyticsClient.get('/api/analytics/users/list', { params }),
@@ -167,4 +171,14 @@ export const analyticsAPI = {
 
     refreshNetworkGeocode: () =>
         analyticsClient.post('/api/analytics/network/refresh'),
+};
+
+// ===== Properties (listings management) =====
+export const propertiesAPI = {
+    getAll: (params) =>
+        analyticsClient.get('/api/analytics/listings/list', { params }),
+    getById: (id) =>
+        analyticsClient.get(`/api/analytics/listings/${id}`),
+    updateStatus: (id, status) =>
+        analyticsClient.patch(`/api/analytics/listings/${id}/status`, { status }),
 };
